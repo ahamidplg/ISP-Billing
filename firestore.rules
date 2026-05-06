@@ -1,0 +1,223 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    
+    // Auth Token Integrity (verified email check)
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    
+    // Developer Helper
+    function isDeveloper() { return isVerified() && request.auth.token.email == "ahamidplg@gmail.com"; }
+
+    // Multi-tenant Helper
+    function isTenantMember(tenantId) {
+      return isSignedIn() && (isDeveloper() || exists(/databases/$(database)/documents/members/$(tenantId + "_" + request.auth.uid)));
+    }
+
+    function isTenantAdmin(tenantId) {
+      return isSignedIn() && (isDeveloper() || get(/databases/$(database)/documents/members/$(tenantId + "_" + request.auth.uid)).data.role == "admin");
+    }
+
+    // --- Entity Specific Validations ---
+
+    // Validates a Tenant
+    function isValidTenant(data) {
+      return data.keys().hasAll(['name', 'slug']) 
+        && data.keys().size() >= 2
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.slug is string && data.slug.size() > 0 && data.slug.size() <= 50;
+    }
+
+    // Validates a Router
+    function isValidRouter(data) {
+      return data.keys().hasAll(['tenantId', 'name', 'ip'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.name is string && data.name.size() <= 100
+        && data.ip is string && data.ip.size() <= 45; // Max IPv6 length
+    }
+
+    function isValidMac(mac) {
+      return mac is string && mac.matches('^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$');
+    }
+
+    // Validates a Customer
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['tenantId', 'name', 'username', 'planId'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.name is string && data.name.size() <= 100
+        && data.username is string && data.username.size() <= 50
+        && data.planId is string && isValidId(data.planId)
+        && (!data.keys().hasAny(['macAddress']) || isValidMac(data.macAddress))
+        && (!data.keys().hasAny(['latitude']) || data.latitude is number)
+        && (!data.keys().hasAny(['longitude']) || data.longitude is number);
+    }
+
+    function isValidPppoeProfile(data) {
+      return data.keys().hasAll(['tenantId', 'name'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.name is string && data.name.size() <= 100
+        && (!data.keys().hasAny(['rateLimit']) || data.rateLimit is string)
+        && (!data.keys().hasAny(['remoteAddress']) || data.remoteAddress is string);
+    }
+
+    // Validates a Plan
+    function isValidPlan(data) {
+      return data.keys().hasAll(['tenantId', 'name', 'limit', 'price'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.name is string && data.name.size() <= 100
+        && data.limit is string && data.limit.size() <= 50
+        && data.price is number && data.price >= 0;
+    }
+
+    // Validates an Invoice
+    function isValidInvoice(data) {
+      return data.keys().hasAll(['tenantId', 'customerId', 'amount', 'status', 'dueDate'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.customerId is string && isValidId(data.customerId)
+        && data.amount is number && data.amount >= 0
+        && data.status in ['paid', 'unpaid', 'overdue'];
+    }
+
+    // Validates an ODP Node
+    function isValidOdpNode(data) {
+      return data.keys().hasAll(['tenantId', 'oltId', 'name'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.oltId is string && isValidId(data.oltId)
+        && data.name is string && data.name.size() <= 100
+        && (!data.keys().hasAny(['ports']) || data.ports is number)
+        && (!data.keys().hasAny(['lat']) || data.lat is number)
+        && (!data.keys().hasAny(['lng']) || data.lng is number);
+    }
+
+    // Validates an OLT Node
+    function isValidOltNode(data) {
+      return data.keys().hasAll(['tenantId', 'name', 'brand', 'ip'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.name is string && data.name.size() <= 100
+        && data.brand in ['huawei', 'zte', 'bdcom', 'generic']
+        && data.ip is string && data.ip.size() <= 45;
+    }
+
+    // Validates an ONU
+    function isValidOnu(data) {
+      return data.keys().hasAll(['tenantId', 'sn', 'oltId'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.sn is string && data.sn.size() <= 100
+        && data.oltId is string && isValidId(data.oltId);
+    }
+
+    // --- Match Rules ---
+
+    // Tenants Collection
+    match /tenants/{tenantId} {
+      allow get: if isTenantMember(tenantId);
+      allow list: if false; // Deny blanket listing
+      allow create: if isVerified() && isValidTenant(incoming());
+      allow update: if isTenantAdmin(tenantId) && isValidTenant(incoming());
+    }
+
+    // Members Collection (Composite ID: tenantId_userId)
+    match /members/{memberId} {
+      allow get: if isSignedIn() && (memberId == (existing().tenantId + "_" + request.auth.uid) || isTenantAdmin(existing().tenantId));
+      allow list: if isSignedIn() && (isDeveloper() || resource.data.userId == request.auth.uid);
+      allow create: if isVerified() && (
+        // Case 1: Initial owner creating membership for new tenant or self-assignment (guarded by dev or verification)
+        (incoming().userId == request.auth.uid && incoming().role == "admin" && (isDeveloper() || !exists(/databases/$(database)/documents/tenants/$(incoming().tenantId)) || existsAfter(/databases/$(database)/documents/tenants/$(incoming().tenantId)))) ||
+        // Case 2: Admin inviting new member
+        (isTenantAdmin(incoming().tenantId))
+      );
+      allow update: if isTenantAdmin(existing().tenantId) && incoming().userId == existing().userId;
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // OLTs and ONUs
+    match /olt_nodes/{oltId} {
+      allow get: if isTenantMember(resource.data.tenantId);
+      allow list: if isSignedIn() && isTenantMember(resource.data.tenantId);
+      allow create: if isTenantAdmin(incoming().tenantId) && isValidOltNode(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidOltNode(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+    match /onus/{onuId} {
+      allow get: if isTenantMember(resource.data.tenantId);
+      allow list: if isSignedIn() && isTenantMember(resource.data.tenantId);
+      allow create: if isTenantAdmin(incoming().tenantId) && isValidOnu(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidOnu(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+    match /odp_nodes/{odpId} {
+      allow get: if isTenantMember(resource.data.tenantId);
+      allow list: if isSignedIn() && isTenantMember(resource.data.tenantId);
+      allow create: if isTenantAdmin(incoming().tenantId) && isValidOdpNode(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidOdpNode(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Routers Collection
+    match /routers/{routerId} {
+      allow get: if isTenantMember(resource.data.tenantId);
+      allow list: if isSignedIn() && isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidRouter(incoming());
+      allow update: if isTenantMember(existing().tenantId) 
+        && incoming().tenantId == existing().tenantId
+        && (
+          // Action: Status Update
+          (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'lastSeen', 'metrics'])) ||
+          // Action: Full Update (Admin only)
+          isTenantAdmin(existing().tenantId)
+        );
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Plans Collection
+    match /plans/{planId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantAdmin(incoming().tenantId) && isValidPlan(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidPlan(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Customers Collection
+    match /customers/{customerId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isVerified() && isTenantMember(incoming().tenantId) && isValidCustomer(incoming());
+      allow update: if isVerified() && isTenantMember(existing().tenantId)
+        && incoming().tenantId == existing().tenantId
+        && isValidCustomer(incoming())
+        && (
+          // Action: Balance Update
+          (incoming().diff(existing()).affectedKeys().hasOnly(['balance', 'status'])) ||
+          // Action: Full Update
+          isTenantAdmin(existing().tenantId)
+        );
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Invoices Collection
+    match /invoices/{invoiceId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidInvoice(incoming());
+      allow update: if isTenantMember(existing().tenantId) 
+        && incoming().tenantId == existing().tenantId
+        && (isTenantAdmin(existing().tenantId) || incoming().diff(existing()).affectedKeys().hasOnly(['status']));
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // PPPoE Profiles Collection
+    match /pppoe_profiles/{profileId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantAdmin(incoming().tenantId) && isValidPppoeProfile(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidPppoeProfile(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+  }
+}

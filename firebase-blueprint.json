@@ -1,0 +1,192 @@
+{
+  "entities": {
+    "Tenant": {
+      "title": "Tenant",
+      "description": "Information about the ISP organization using the platform.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "slug"]
+    },
+    "Router": {
+      "title": "Router",
+      "description": "Mikrotik or Edge router configuration.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "ip": { "type": "string" },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "status": { "type": "string", "enum": ["online", "offline", "warning"] },
+        "lastSeen": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tenantId", "name", "ip"]
+    },
+    "Plan": {
+      "title": "Plan",
+      "description": "Service tier (e.g., 50Mbps Fiber).",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "limit": { "type": "string", "description": "e.g., 50M/10M" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" }
+      },
+      "required": ["tenantId", "name", "limit", "price"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Subscriber information.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "address": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "planId": { "type": "string" },
+        "routerId": { "type": "string" },
+        "macAddress": { "type": "string", "description": "MAC address of the customer ONT/Router." },
+        "status": { "type": "string", "enum": ["active", "suspended", "expired"] },
+        "balance": { "type": "number" }
+      },
+      "required": ["tenantId", "name", "username", "planId"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Billing record for a customer.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "customerId": { "type": "string" },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["paid", "unpaid", "overdue"] },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tenantId", "customerId", "amount", "status", "dueDate"]
+    },
+    "OltNode": {
+      "title": "OLT Node",
+      "description": "Optical Line Terminal hardware (Huawei, ZTE, BDCOM).",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "ip": { "type": "string" },
+        "sn": { "type": "string" },
+        "brand": { "type": "string", "enum": ["huawei", "zte", "bdcom", "generic"] },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "protocol": { "type": "string", "enum": ["ssh", "telnet"] },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["tenantId", "name", "brand", "ip"]
+    },
+    "Onu": {
+      "title": "ONU",
+      "description": "Details of an ONT/ONU connected to OLT",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "sn": { "type": "string" },
+        "oltId": { "type": "string" },
+        "ponPort": { "type": "string" },
+        "onuIndex": { "type": "string" },
+        "signal": { "type": "number" },
+        "status": { "type": "string" },
+        "customerId": { "type": "string" }
+      },
+      "required": ["tenantId", "sn", "oltId"]
+    },
+    "OdpNode": {
+      "title": "ODP Node",
+      "description": "Optical Distribution Point (splitter).",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "oltId": { "type": "string" },
+        "name": { "type": "string" },
+        "ports": { "type": "number" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" }
+      },
+      "required": ["tenantId", "oltId", "name"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "A user assigned to a tenant with a specific role.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "userId": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "staff"] }
+      },
+      "required": ["tenantId", "userId", "role"]
+    },
+    "PppoeProfile": {
+      "title": "PPPoE Profile",
+      "description": "Mikrotik PPPoE profile configuration.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "remoteAddress": { "type": "string" },
+        "rateLimit": { "type": "string" }
+      },
+      "required": ["tenantId", "name"]
+    }
+  },
+  "firestore": {
+    "tenants": {
+      "schema": "Tenant",
+      "description": "Platform tenants."
+    },
+    "members": {
+      "schema": "Member",
+      "description": "Membership in tenants."
+    },
+    "routers": {
+      "schema": "Router",
+      "description": "Network hardware."
+    },
+    "plans": {
+      "schema": "Plan",
+      "description": "Internet service plans."
+    },
+    "customers": {
+      "schema": "Customer",
+      "description": "Subscribers."
+    },
+    "invoices": {
+      "schema": "Invoice",
+      "description": "Billing history."
+    },
+    "olt_nodes": {
+      "schema": "OltNode",
+      "description": "FTTH OLT infrastructure."
+    },
+    "onus": {
+      "schema": "Onu",
+      "description": "Individual Optical Network Units (ONTs)."
+    },
+    "odp_nodes": {
+      "schema": "OdpNode",
+      "description": "FTTH ODP splitters."
+    },
+    "pppoe_profiles": {
+      "schema": "PppoeProfile",
+      "description": "PPPoE profile configurations for routers."
+    }
+  }
+}

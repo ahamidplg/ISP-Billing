@@ -1,0 +1,8 @@
+{
+  "name": "ISP Billing FTTH Management",
+  "description": "Multi-tenant FTTH management platform with Mikrotik integration, GIS mapping, and automated billing.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": []
+}
