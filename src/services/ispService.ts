@@ -255,12 +255,16 @@ export const ispService = {
     }
   },
 
-  async getOnuDetails(sn: string) {
+  async testOltConnection(data: any) {
     try {
-      const res = await fetch(`/api/onus/${sn}/details`);
-      if (!res.ok) throw new Error('ONU link failure');
+      const res = await fetch('/api/olts/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('OLT link timeout');
       return await res.json();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       throw e;
     }

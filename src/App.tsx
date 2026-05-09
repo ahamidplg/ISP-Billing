@@ -666,10 +666,7 @@ function InfrastructureView() {
   const [selectedOlt, setSelectedOlt] = useState<any>(null);
   const [unconfiguredOnus, setUnconfiguredOnus] = useState<any[]>([]);
   const [configuredOnus, setConfiguredOnus] = useState<any[]>([]);
-  const [selectedOnu, setSelectedOnu] = useState<any>(null);
-  const [onuDetails, setOnuDetails] = useState<any>(null);
   const [isOltLoading, setIsOltLoading] = useState(false);
-  const [isOnuLoading, setIsOnuLoading] = useState(false);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [provisionFormData, setProvisionFormData] = useState({ 
     name: '', 
@@ -739,7 +736,6 @@ function InfrastructureView() {
   const fetchOnuDetails = async (oltId: string, onuSn: string) => {
     setIsMetricsFetching(true);
     setShowOnuModal(true);
-    setIsOnuLoading(true);
     try {
       const [details, metrics] = await Promise.all([
         ispService.getOnuDetails(oltId, onuSn),
@@ -747,14 +743,10 @@ function InfrastructureView() {
       ]);
       setSelectedOnuDetails({ ...details, sn: onuSn });
       setOnuMetrics(metrics);
-      // Compatibility with existing state if any
-      setSelectedOnu({ sn: onuSn });
-      setOnuDetails(details);
     } catch (err) {
       console.error('Failed to fetch ONU info', err);
     } finally {
       setIsMetricsFetching(false);
-      setIsOnuLoading(false);
     }
   };
 
@@ -859,8 +851,8 @@ function InfrastructureView() {
   const fetchOltDetails = async (olt: any) => {
     setSelectedOlt(olt);
     setIsOltLoading(true);
-    setSelectedOnu(null);
-    setOnuDetails(null);
+    setSelectedOnuDetails(null);
+    setOnuMetrics(null);
     try {
       const [unconfigured, configured] = await Promise.all([
         ispService.getUnconfiguredOnus(olt.id),
@@ -1284,114 +1276,6 @@ function InfrastructureView() {
             )}
           </div>
         </div>
-
-       {selectedOnu && (
-         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <motion.div 
-               initial={{ opacity: 0, scale: 0.95, y: 20 }}
-               animate={{ opacity: 1, scale: 1, y: 0 }}
-               className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200"
-            >
-               <div className="px-6 py-4 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-400">
-                        <Radio className="w-5 h-5" />
-                     </div>
-                     <div>
-                        <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-1">Optical Terminal Info</p>
-                        <h3 className="text-lg font-bold tracking-tight uppercase">{selectedOnu.sn}</h3>
-                     </div>
-                  </div>
-                  <button onClick={() => { setSelectedOnu(null); setOnuDetails(null); }} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors">
-                     <X className="w-5 h-5" />
-                  </button>
-               </div>
-
-               <div className="p-6 space-y-6">
-                  {isOnuLoading ? (
-                    <div className="py-12 flex flex-col items-center justify-center space-y-4">
-                       <Activity className="w-10 h-10 text-indigo-500 animate-spin" />
-                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Probing Optical Link...</p>
-                    </div>
-                  ) : onuDetails ? (
-                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                             <div className="flex items-center gap-2 text-slate-400">
-                                <ArrowDownLeft className="w-3.5 h-3.5" />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">RX Level</span>
-                             </div>
-                             <p className={cn("text-xl font-mono font-bold", parseFloat(onuDetails.signal.rx) < -25 ? "text-rose-500" : "text-slate-900")}>
-                                {onuDetails.signal.rx} <span className="text-xs">dBm</span>
-                             </p>
-                          </div>
-                          <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-1">
-                             <div className="flex items-center gap-2 text-slate-400">
-                                <ArrowUpRight className="w-3.5 h-3.5" />
-                                <span className="text-[9px] font-bold uppercase tracking-wider">TX Power</span>
-                             </div>
-                             <p className="text-xl font-mono font-bold text-slate-900">
-                                {onuDetails.signal.tx} <span className="text-xs">dBm</span>
-                             </p>
-                          </div>
-                       </div>
-
-                       <div className="grid grid-cols-2 gap-4">
-                          <div className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl">
-                             <div className="w-8 h-8 bg-orange-50 text-orange-500 rounded-lg flex items-center justify-center">
-                                <Thermometer className="w-4 h-4" />
-                             </div>
-                             <div>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase leading-none mb-1">Temperature</p>
-                                <p className="text-xs font-bold text-slate-700">{onuDetails.metrics.temp}°C</p>
-                             </div>
-                          </div>
-                          <div className="flex items-center gap-3 p-3 bg-white border border-slate-100 rounded-xl">
-                             <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center">
-                                <Gauge className="w-4 h-4" />
-                             </div>
-                             <div>
-                                <p className="text-[8px] font-bold text-slate-400 uppercase leading-none mb-1">Voltage</p>
-                                <p className="text-xs font-bold text-slate-700">{onuDetails.metrics.voltage}V</p>
-                             </div>
-                          </div>
-                       </div>
-
-                       <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl space-y-3">
-                          <div className="flex items-center justify-between">
-                             <p className="text-[9px] font-bold text-indigo-600 uppercase tracking-widest">Assigned Customer</p>
-                             <div className="px-2 py-0.5 bg-indigo-100 text-indigo-600 rounded-full text-[8px] font-bold uppercase">Active Plan</div>
-                          </div>
-                          <div className="flex items-center gap-4">
-                             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-indigo-600 font-bold text-lg">
-                                {onuDetails.customer.name.charAt(0)}
-                             </div>
-                             <div>
-                                <p className="text-sm font-bold text-slate-900">{onuDetails.customer.name}</p>
-                                <p className="text-[10px] text-slate-500 font-medium">Plan: {onuDetails.customer.plan}</p>
-                             </div>
-                          </div>
-                       </div>
-
-                       <div className="pt-2">
-                          <button 
-                            onClick={() => fetchOnuDetails(selectedOnu)}
-                            className="w-full py-3 bg-slate-900 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-indigo-600 transition-colors shadow-lg shadow-slate-200 flex items-center justify-center gap-2"
-                          >
-                             <RefreshCw className={cn("w-4 h-4", isOnuLoading && "animate-spin")} /> Refresh Diagnostics
-                          </button>
-                       </div>
-                    </div>
-                  ) : (
-                    <div className="py-12 text-center text-slate-400">
-                       <AlertCircle className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                       <p className="text-xs font-bold uppercase tracking-widest">Diagnostic data unavailable</p>
-                    </div>
-                  )}
-               </div>
-            </motion.div>
-         </div>
-       )}
 
        {showProvisionModal && (
          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
