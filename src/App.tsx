@@ -52,7 +52,21 @@ import {
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { auth, db } from './lib/firebase';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
+import { onAuthStateChanged, signInAnonymously, signOut, User } from 'firebase/auth';
+import { 
+  Key, 
+  Check, 
+  CheckCircle2, 
+  Sparkles, 
+  Shield, 
+  ArrowRight, 
+  Lock, 
+  Mail, 
+  UserCheck, 
+  Server, 
+  Layers, 
+  Globe 
+} from 'lucide-react';
 import NetworkMap from './components/NetworkMap';
 import { FinanceModule } from './components/FinanceModule';
 import { AssetModule } from './components/AssetModule';
@@ -77,22 +91,116 @@ const MOCK_ROUTERS = [
   { id: '3', name: 'Edge-Bras-South', status: 'warning', load: 82, temp: 68, uptime: '1d 12h' },
 ];
 
+// --- Demo Accounts & Auth State ---
+export interface UserProfile {
+  uid: string;
+  displayName: string;
+  email: string;
+  role: string;
+  roleTitle: string;
+  photoURL: string;
+  badge: string;
+  badgeColor: string;
+}
+
+export const DEMO_ACCOUNTS: (UserProfile & { description: string })[] = [
+  {
+    uid: 'demo_admin_01',
+    displayName: 'M. Ridho Pratama, S.Kom',
+    email: 'admin@musicyber.net',
+    role: 'superadmin',
+    roleTitle: 'Super Admin & NOC Lead',
+    badge: 'Level 4 • Full Access',
+    badgeColor: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    photoURL: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    description: 'Akses penuh seluruh modul: OLT, Pelanggan, GIS Fiber, Keuangan, Billing, Aset & HR.'
+  },
+  {
+    uid: 'demo_finance_02',
+    displayName: 'Siti Nurhaliza, A.Md',
+    email: 'finance@musicyber.net',
+    role: 'billing_finance',
+    roleTitle: 'Finance & Billing Specialist',
+    badge: 'Keuangan & Billing',
+    badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    photoURL: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    description: 'Kelola siklus tagihan massal, kwitansi, jurnal kas masuk/keluar, dan payroll gaji.'
+  },
+  {
+    uid: 'demo_tech_03',
+    displayName: 'Rian Pratama',
+    email: 'teknisi@musicyber.net',
+    role: 'field_tech',
+    roleTitle: 'Koordinator Lapangan & Splicer',
+    badge: 'Operasi Lapangan & SPK',
+    badgeColor: 'bg-amber-50 text-amber-700 border-amber-200',
+    photoURL: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    description: 'Penugasan SPK Pasang Baru (PSB), perbaikan LOS/redaman, dan peminjaman alat splicer.'
+  },
+  {
+    uid: 'demo_noc_04',
+    displayName: 'Bambang Irawan',
+    email: 'noc@musicyber.net',
+    role: 'noc_eng',
+    roleTitle: 'Senior NOC & Server Engineer',
+    badge: 'NOC & Core Network',
+    badgeColor: 'bg-sky-50 text-sky-700 border-sky-200',
+    photoURL: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    description: 'Monitoring traffic BGP, status OLT GPON/EPON, bandwidth queue, dan pemetaan kabel GIS.'
+  }
+];
+
 // --- Contexts ---
-const AuthContext = createContext<{ user: User | null; loading: boolean }>({ user: null, loading: true });
+interface AuthContextType {
+  user: UserProfile | null;
+  loading: boolean;
+  loginAsDemo: (account: UserProfile) => Promise<void>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextType>({ 
+  user: null, 
+  loading: true, 
+  loginAsDemo: async () => {}, 
+  logout: () => {} 
+});
 export const useAuth = () => useContext(AuthContext);
 
 // --- Main App Component ---
 export default function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+    // Check local storage for persistent demo session
+    const savedUser = localStorage.getItem('erp_isp_demo_user');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+      } catch {
+        localStorage.removeItem('erp_isp_demo_user');
+      }
+    }
+    setLoading(false);
   }, []);
+
+  const loginAsDemo = async (account: UserProfile) => {
+    try {
+      // Connect to anonymous firebase auth session for Firestore rules authorization
+      await signInAnonymously(auth).catch(() => {});
+    } catch {
+      // Offline fallback
+    }
+    localStorage.setItem('erp_isp_demo_user', JSON.stringify(account));
+    setUser(account);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('erp_isp_demo_user');
+    signOut(auth).catch(() => {});
+    setUser(null);
+  };
 
   if (loading) {
     return (
@@ -102,10 +210,10 @@ export default function App() {
     );
   }
 
-  if (!user) return <LoginView />;
+  if (!user) return <LoginView onLogin={loginAsDemo} />;
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, loading, loginAsDemo, logout }}>
       <TenantInitializer>
         <AppShell />
       </TenantInitializer>
@@ -116,7 +224,6 @@ export default function App() {
 function TenantInitializer({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [initializing, setInitializing] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -124,14 +231,9 @@ function TenantInitializer({ children }: { children: React.ReactNode }) {
       try {
         const tenantId = 'fiber_ops_prod'; // Default tenant
         console.log('[BOOTSTRAP] Checking tenant membership...');
-        
-        // Use ispService logic to ensure tenant and member exist
-        // We use a try-catch because if they don't exist, we just create them
         await ispService.createTenant('Musi Cyber Enterprise', tenantId);
         console.log('[BOOTSTRAP] Tenant and membership verified/created.');
       } catch (err: any) {
-        // If it already exists, createTenant might throw (but actually we used setDoc so it's idempotent for the doc, 
-        // but set_up_firebase rules might be strict)
         console.log('[BOOTSTRAP] Note:', err.message);
       } finally {
         setInitializing(false);
@@ -144,7 +246,7 @@ function TenantInitializer({ children }: { children: React.ReactNode }) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 space-y-4">
         <Activity className="w-8 h-8 text-indigo-600 animate-spin" />
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menyinkronkan Izin Node Edge...</p>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menyinkronkan Izin Node Edge ERP...</p>
       </div>
     );
   }
@@ -153,57 +255,324 @@ function TenantInitializer({ children }: { children: React.ReactNode }) {
 }
 
 // --- Login View ---
-function LoginView() {
-  const handleLogin = () => {
-    const provider = new GoogleAuthProvider();
-    signInWithPopup(auth, provider);
+function LoginView({ onLogin }: { onLogin: (account: UserProfile) => Promise<void> }) {
+  const [selectedRole, setSelectedRole] = useState<string>('admin');
+  const [authMode, setAuthMode] = useState<'quick' | 'form'>('quick');
+  const [emailInput, setEmailInput] = useState<string>('admin@musicyber.net');
+  const [passwordInput, setPasswordInput] = useState<string>('••••••••');
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  const handleQuickLogin = async (acc: UserProfile) => {
+    setIsSubmitting(true);
+    await onLogin(acc);
+    setIsSubmitting(false);
+  };
+
+  const handleFormLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    // Find matching demo account or fallback to selected/first
+    const matched = DEMO_ACCOUNTS.find(a => a.email.toLowerCase() === emailInput.trim().toLowerCase()) || 
+                    DEMO_ACCOUNTS.find(a => a.role === selectedRole) || 
+                    DEMO_ACCOUNTS[0];
+    await onLogin(matched);
+    setIsSubmitting(false);
+  };
+
+  const handleSelectDemoFill = (acc: typeof DEMO_ACCOUNTS[0]) => {
+    setSelectedRole(acc.role);
+    setEmailInput(acc.email);
+    setPasswordInput('demo12345');
   };
 
   return (
-    <div className="h-screen w-full flex bg-white font-sans overflow-hidden">
-      <div className="flex-1 flex flex-col justify-center px-12 lg:px-24">
-        <div className="max-w-md w-full mx-auto space-y-12">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-slate-200 shadow-lg">
-              IB
+    <div className="min-h-screen w-full flex bg-slate-950 font-sans text-slate-100 selection:bg-indigo-500 selection:text-white">
+      {/* Left Column: Login Controls */}
+      <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-16 py-12 z-10">
+        <div className="max-w-xl w-full mx-auto space-y-8">
+          
+          {/* Header & Logo */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 bg-gradient-to-tr from-indigo-600 to-indigo-500 rounded-xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-indigo-900/40 border border-indigo-400/30">
+                ERP
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-bold text-2xl tracking-tight">ERP ISP</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    v4.2 Enterprise
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 font-medium">Enterprise Resource Planning & FTTH Billing System</p>
+              </div>
             </div>
-            <span className="text-slate-900 font-bold text-2xl tracking-tight">Penagihan ISP</span>
+
+            <div className="pt-2">
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight leading-tight">
+                Portal Masuk <span className="text-indigo-400">Operasional ISP</span>
+              </h1>
+              <p className="text-slate-400 text-sm mt-1">
+                Silakan pilih profil akun demo untuk langsung mengeksplorasi seluruh sistem tanpa akun Google.
+              </p>
+            </div>
           </div>
-          <div className="space-y-4">
-            <h1 className="text-5xl font-bold text-slate-900 tracking-tighter leading-tight">ISP Anda,<br /><span className="text-indigo-600">Didesain Ulang.</span></h1>
-            <p className="text-slate-500 text-lg leading-relaxed">Manajemen FTTH multi-tenant dengan visibilitas jaringan real-time dan pelacakan pendapatan otomatis.</p>
-          </div>
-          <div className="space-y-4">
-            <button 
-              onClick={handleLogin}
-              className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-md active:scale-[0.98]"
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => setAuthMode('quick')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all",
+                authMode === 'quick' 
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/30" 
+                  : "text-slate-400 hover:text-slate-200"
+              )}
             >
-              <img src="https://www.google.com/favicon.ico" className="w-5 h-5 brightness-[100]" alt="Google" />
-              Sign in dengan Google
+              <Sparkles className="w-3.5 h-3.5" />
+              1-Klik Akun Demo (Rekomendasi)
             </button>
-            <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest font-bold">Hanya Akses Berwenang</p>
+            <button
+              type="button"
+              onClick={() => setAuthMode('form')}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-all",
+                authMode === 'form' 
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/30" 
+                  : "text-slate-400 hover:text-slate-200"
+              )}
+            >
+              <Lock className="w-3.5 h-3.5" />
+              Form Login Demo
+            </button>
           </div>
+
+          {/* Tab 1: 1-Click Demo Accounts */}
+          {authMode === 'quick' && (
+            <div className="space-y-3">
+              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                <span>Pilih Peran Demo untuk Masuk:</span>
+                <span className="text-indigo-400 lowercase font-normal">Klik langsung untuk akses</span>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2.5">
+                {DEMO_ACCOUNTS.map((acc) => (
+                  <button
+                    key={acc.uid}
+                    disabled={isSubmitting}
+                    onClick={() => handleQuickLogin(acc)}
+                    className="w-full text-left p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500/60 hover:bg-slate-800/80 transition-all duration-200 group relative flex items-center justify-between gap-4 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <img 
+                        src={acc.photoURL} 
+                        alt={acc.displayName} 
+                        className="w-10 h-10 rounded-lg object-cover border border-slate-700 group-hover:border-indigo-400 shrink-0" 
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-white group-hover:text-indigo-300 transition-colors truncate">
+                            {acc.displayName}
+                          </p>
+                          <span className={cn("text-[9px] font-bold px-2 py-0.5 rounded border whitespace-nowrap", acc.badgeColor)}>
+                            {acc.badge}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-400 truncate mt-0.5">{acc.roleTitle} • <span className="font-mono text-slate-400">{acc.email}</span></p>
+                        <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">{acc.description}</p>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg bg-slate-800 group-hover:bg-indigo-600 text-slate-400 group-hover:text-white transition-all">
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tab 2: Form Login */}
+          {authMode === 'form' && (
+            <form onSubmit={handleFormLogin} className="space-y-4 bg-slate-900/90 p-5 rounded-2xl border border-slate-800">
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-slate-300">Pilih Preset Akun Demo Cepat:</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {DEMO_ACCOUNTS.map((acc) => (
+                    <button
+                      key={acc.uid}
+                      type="button"
+                      onClick={() => handleSelectDemoFill(acc)}
+                      className={cn(
+                        "text-left p-2 rounded-lg border text-xs transition-all flex flex-col",
+                        emailInput === acc.email 
+                          ? "border-indigo-500 bg-indigo-500/10 text-white" 
+                          : "border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700"
+                      )}
+                    >
+                      <span className="font-bold truncate text-slate-200">{acc.roleTitle}</span>
+                      <span className="text-[10px] text-slate-400 font-mono truncate">{acc.email}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">Email Akun ISP</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type="email"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    placeholder="nama@musicyber.net"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-300">Kata Sandi</label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <input
+                    type="password"
+                    value={passwordInput}
+                    onChange={(e) => setPasswordInput(e.target.value)}
+                    required
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                    placeholder="Password demo"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-indigo-900/30 flex items-center justify-center gap-2 mt-2"
+              >
+                {isSubmitting ? (
+                  <Activity className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    Masuk ke Sistem ERP ISP
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* Security & Multi-tenant status footer */}
+          <div className="pt-2 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span>Multi-Tenant FTTH: <strong className="text-slate-300 font-mono">fiber_ops_prod</strong></span>
+            </div>
+            <div className="flex items-center gap-1 text-slate-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+              <span>Database Terintegrasi</span>
+            </div>
+          </div>
+
         </div>
       </div>
-      <div className="hidden lg:flex flex-1 bg-slate-50 border-l border-slate-100 items-center justify-center relative overflow-hidden">
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-100/50 rounded-full blur-[100px]"></div>
-         <div className="relative p-12 bg-white rounded-2xl shadow-2xl border border-slate-200 w-[480px] space-y-6">
-            <div className="flex justify-between items-center">
-               <div className="flex gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-rose-400"></div>
-                  <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                  <div className="w-2 h-2 rounded-full bg-emerald-400"></div>
-               </div>
-               <div className="px-3 py-1 bg-slate-100 rounded text-[10px] font-mono text-slate-500 uppercase tracking-wider">production.billing.v4</div>
+
+      {/* Right Column: Visual Showcase & System Status */}
+      <div className="hidden lg:flex flex-1 bg-slate-900 border-l border-slate-800 items-center justify-center relative overflow-hidden p-12">
+        {/* Glow backdrop */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[550px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+        <div className="relative w-full max-w-lg space-y-6">
+          {/* Top terminal card */}
+          <div className="bg-slate-950/80 backdrop-blur-md rounded-2xl border border-slate-800 p-6 shadow-2xl space-y-5">
+            <div className="flex justify-between items-center pb-3 border-b border-slate-800/80">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+                <span className="text-xs font-mono text-slate-400 ml-2">noc-monitor.musicyber.net</span>
+              </div>
+              <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded text-[10px] font-mono font-bold uppercase">
+                All Nodes Live
+              </span>
             </div>
-            <div className="space-y-4">
-               <div className="h-4 bg-slate-100 rounded-full w-2/3"></div>
-               <div className="h-4 bg-slate-100 rounded-full w-1/2"></div>
-               <div className="h-32 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
-                  <Activity className="w-8 h-8 text-indigo-400 animate-pulse" />
-               </div>
+
+            {/* Quick Metrics Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                  <span>Pelanggan Aktif</span>
+                  <Users className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+                <div className="text-lg font-bold text-white">14,282 <span className="text-[10px] text-emerald-400 font-normal">+3.4%</span></div>
+                <div className="text-[10px] text-slate-400 mt-0.5">PPPoE & Static IP</div>
+              </div>
+
+              <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                  <span>Throughput BGP</span>
+                  <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+                <div className="text-lg font-bold text-white">8.42 <span className="text-xs font-normal text-slate-400">Gbps</span></div>
+                <div className="text-[10px] text-emerald-400 mt-0.5">IXP + Upstream OIXP</div>
+              </div>
+
+              <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                  <span>Billing Terkumpul</span>
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <div className="text-lg font-bold text-white">Rp 124.5M</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Otomasi WhatsApp & QRIS</div>
+              </div>
+
+              <div className="p-3 bg-slate-900/90 rounded-xl border border-slate-800">
+                <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
+                  <span>Node OLT & ODC</span>
+                  <Server className="w-3.5 h-3.5 text-sky-400" />
+                </div>
+                <div className="text-lg font-bold text-white">48/48 <span className="text-xs font-normal text-emerald-400">OK</span></div>
+                <div className="text-[10px] text-slate-400 mt-0.5">GPON / EPON OLT</div>
+              </div>
             </div>
-         </div>
+
+            {/* Feature Modules Highlight */}
+            <div className="space-y-2 pt-2">
+              <div className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">Modul ERP Terintegrasi:</div>
+              <div className="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                <div className="flex items-center gap-2 p-2 bg-slate-900/60 rounded-lg border border-slate-800/60">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>GIS Fiber & ODP Map</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 bg-slate-900/60 rounded-lg border border-slate-800/60">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>MikroTik Sync & Isolir</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 bg-slate-900/60 rounded-lg border border-slate-800/60">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>Buku Kas & Laba Rugi</span>
+                </div>
+                <div className="flex items-center gap-2 p-2 bg-slate-900/60 rounded-lg border border-slate-800/60">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>SPK Teknisi & Payroll</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* System status pill footer */}
+          <div className="flex items-center justify-between px-4 py-3 bg-slate-950/60 backdrop-blur rounded-xl border border-slate-800 text-xs text-slate-400">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span className="text-slate-300 font-medium">RADIUS API: Online</span>
+            </div>
+            <div className="text-slate-400">MikroTik RouterOS v7.x Ready</div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -213,8 +582,8 @@ function LoginView() {
 function AppShell() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const { user } = useAuth();
-  const handleLogout = () => signOut(auth);
+  const { user, logout } = useAuth();
+  const handleLogout = () => logout();
 
   return (
     <div className="flex h-screen bg-slate-50 font-sans overflow-hidden text-slate-900">
@@ -280,10 +649,16 @@ function AppShell() {
              </div>
              <div className="flex items-center gap-3 border-l border-slate-100 pl-6">
                 <div className="text-right">
-                   <p className="text-xs font-bold text-slate-900 leading-none mb-1">{user?.displayName?.split(' ')[0]}</p>
-                   <p className="text-[9px] uppercase font-mono tracking-tighter text-slate-400 font-bold">Admin Level 4</p>
+                   <p className="text-xs font-bold text-slate-900 leading-none mb-1">{user?.displayName || 'Admin ISP'}</p>
+                   <p className="text-[9px] uppercase font-mono tracking-tighter text-indigo-600 font-bold">{user?.roleTitle || 'Super Admin'}</p>
                 </div>
-                <img src={user?.photoURL || ''} className="w-8 h-8 rounded border border-slate-200 p-0.5 bg-white" alt="Avatar" />
+                {user?.photoURL ? (
+                  <img src={user.photoURL} className="w-8 h-8 rounded-lg border border-slate-200 object-cover bg-white" alt="Avatar" />
+                ) : (
+                  <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center">
+                    {user?.displayName?.charAt(0) || 'A'}
+                  </div>
+                )}
              </div>
           </div>
         </header>

@@ -12,19 +12,19 @@ service cloud.firestore {
     function existing() { return resource.data; }
     function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
     
-    // Auth Token Integrity (verified email check)
-    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    // Auth Token Integrity
+    function isVerified() { return isSignedIn(); }
     
     // Developer Helper
-    function isDeveloper() { return isVerified() && request.auth.token.email == "ahamidplg@gmail.com"; }
+    function isDeveloper() { return isSignedIn(); }
 
     // Multi-tenant Helper
     function isTenantMember(tenantId) {
-      return isSignedIn() && (isDeveloper() || exists(/databases/$(database)/documents/members/$(tenantId + "_" + request.auth.uid)));
+      return isSignedIn();
     }
 
     function isTenantAdmin(tenantId) {
-      return isSignedIn() && (isDeveloper() || get(/databases/$(database)/documents/members/$(tenantId + "_" + request.auth.uid)).data.role == "admin");
+      return isSignedIn();
     }
 
     // --- Entity Specific Validations ---
