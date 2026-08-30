@@ -1,6 +1,6 @@
 {
-  "name": "ISP Billing FTTH Management",
-  "description": "Multi-tenant FTTH management platform with Mikrotik integration, GIS mapping, automated billing, and comprehensive finance module.",
+  "name": "ERP ISP",
+  "description": "Sistem Enterprise Resource Planning (ERP) & Billing Terpadu untuk Internet Service Provider (ISP) FTTH - Manajemen OLT, Pelanggan, GIS Fiber, Keuangan & Penagihan, Aset Inventaris, serta HR & SPK Lapangan.",
   "requestFramePermissions": [
     "geolocation"
   ],

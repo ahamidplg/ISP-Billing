@@ -221,8 +221,8 @@ function AppShell() {
       {/* Sidebar */}
       <aside className={cn("bg-slate-900 flex flex-col transition-all duration-300 border-r border-slate-800 shrink-0", isSidebarOpen ? "w-56" : "w-20")}>
         <div className="p-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-slate-100 text-slate-900 rounded flex items-center justify-center font-bold">IB</div>
-          {isSidebarOpen && <span className="text-white font-bold tracking-tight">Penagihan ISP</span>}
+          <div className="w-8 h-8 bg-indigo-600 text-white rounded-lg flex items-center justify-center font-black tracking-tight text-xs shadow-sm">ERP</div>
+          {isSidebarOpen && <span className="text-white font-bold tracking-tight text-sm">ERP ISP</span>}
         </div>
         <nav className="flex-1 px-3 space-y-1 mt-4">
           <div className="text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Operasi Jaringan</div>
