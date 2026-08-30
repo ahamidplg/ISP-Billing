@@ -1,5 +1,15 @@
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, setDoc, deleteDoc, orderBy } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { 
+  Transaction, 
+  Invoice, 
+  Asset, 
+  AssetLoanLog, 
+  Employee, 
+  AttendanceRecord, 
+  WorkOrder, 
+  PayrollSlip 
+} from '../types';
 
 export interface Tenant {
   id: string;
@@ -358,10 +368,444 @@ export const ispService = {
   async deletePppoeProfile(profileId: string) {
     const path = `pppoe_profiles/${profileId}`;
     try {
-      const { deleteDoc } = await import('firebase/firestore');
       await deleteDoc(doc(db, 'pppoe_profiles', profileId));
     } catch (e) {
       handleFirestoreError(e, OperationType.DELETE, path);
+    }
+  },
+
+  // --- Financial Module (Ledger / Buku Kas) ---
+  async getTransactions(tenantId: string): Promise<Transaction[]> {
+    const path = 'transactions';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Transaction));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async addTransaction(tenantId: string, data: Partial<Transaction>) {
+    const path = 'transactions';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        type: data.type || 'income',
+        category: data.category || 'langganan_bulanan',
+        amount: Number(data.amount) || 0,
+        date: data.date || new Date().toISOString().split('T')[0],
+        paymentMethod: data.paymentMethod || 'cash',
+        description: data.description || '',
+        referenceNo: data.referenceNo || `TRX-${Date.now()}`,
+        recordedBy: data.recordedBy || auth.currentUser?.email || 'admin',
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+    }
+  },
+
+  async deleteTransaction(transactionId: string) {
+    const path = `transactions/${transactionId}`;
+    try {
+      await deleteDoc(doc(db, 'transactions', transactionId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, path);
+    }
+  },
+
+  // --- Invoices & Billing Engine ---
+  async getInvoices(tenantId: string): Promise<Invoice[]> {
+    const path = 'invoices';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Invoice));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async addInvoice(tenantId: string, data: Partial<Invoice>) {
+    const path = 'invoices';
+    try {
+      const invoiceNumber = data.invoiceNumber || `INV-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        invoiceNumber,
+        customerId: data.customerId || 'cust_general',
+        customerName: data.customerName || 'Pelanggan FTTH',
+        customerPhone: data.customerPhone || '',
+        planId: data.planId || 'plan_default',
+        planName: data.planName || 'Paket Fiber Home',
+        amount: Number(data.amount) || 0,
+        tax: Number(data.tax) || 0,
+        discount: Number(data.discount) || 0,
+        totalAmount: Number(data.totalAmount || data.amount) || 0,
+        status: data.status || 'unpaid',
+        billingMonth: data.billingMonth || new Date().toLocaleString('id-ID', { month: 'long', year: 'numeric' }),
+        dueDate: data.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        notes: data.notes || '',
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+    }
+  },
+
+  async updateInvoice(invoiceId: string, data: Partial<Invoice>) {
+    const path = `invoices/${invoiceId}`;
+    try {
+      await updateDoc(doc(db, 'invoices', invoiceId), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async payInvoice(tenantId: string, invoice: Invoice, paymentMethod: string, recordedBy?: string) {
+    const invoicePath = `invoices/${invoice.id}`;
+    const transactionPath = 'transactions';
+    const now = new Date().toISOString();
+    const today = now.split('T')[0];
+
+    try {
+      // 1. Update Invoice status
+      if (invoice.id) {
+        await updateDoc(doc(db, 'invoices', invoice.id), {
+          status: 'paid',
+          paidAt: now,
+          paymentMethod: paymentMethod
+        });
+      }
+
+      // 2. Add income transaction to Cash Flow
+      await addDoc(collection(db, transactionPath), {
+        tenantId,
+        type: 'income',
+        category: 'langganan_bulanan',
+        amount: Number(invoice.totalAmount || invoice.amount),
+        date: today,
+        paymentMethod: paymentMethod,
+        description: `Pembayaran ${invoice.invoiceNumber} - ${invoice.customerName || 'Pelanggan'} (${invoice.planName || 'Internet'})`,
+        referenceNo: invoice.invoiceNumber,
+        invoiceId: invoice.id,
+        recordedBy: recordedBy || auth.currentUser?.email || 'admin',
+        createdAt: serverTimestamp()
+      });
+
+      return true;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, invoicePath);
+    }
+  },
+
+  async deleteInvoice(invoiceId: string) {
+    const path = `invoices/${invoiceId}`;
+    try {
+      await deleteDoc(doc(db, 'invoices', invoiceId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, path);
+    }
+  },
+
+  // ==========================================
+  // MODUL PENCATATAN ASET
+  // ==========================================
+  async getAssets(tenantId: string): Promise<Asset[]> {
+    const path = 'assets';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Asset));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async createAsset(tenantId: string, data: Omit<Asset, 'id' | 'tenantId'>): Promise<string> {
+    const path = 'assets';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...data,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
+    }
+  },
+
+  async updateAsset(assetId: string, data: Partial<Asset>) {
+    const path = `assets/${assetId}`;
+    try {
+      await updateDoc(doc(db, 'assets', assetId), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async deleteAsset(assetId: string) {
+    const path = `assets/${assetId}`;
+    try {
+      await deleteDoc(doc(db, 'assets', assetId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, path);
+    }
+  },
+
+  async getAssetLoans(tenantId: string): Promise<AssetLoanLog[]> {
+    const path = 'asset_loans';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AssetLoanLog));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async createAssetLoan(tenantId: string, loanData: Omit<AssetLoanLog, 'id' | 'tenantId'>) {
+    const path = 'asset_loans';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...loanData,
+        createdAt: serverTimestamp()
+      });
+      // Update asset status to in_use or assigned
+      if (loanData.assetId) {
+        await updateDoc(doc(db, 'assets', loanData.assetId), {
+          status: 'in_use',
+          assignedTo: loanData.employeeId,
+          assignedToName: loanData.employeeName
+        });
+      }
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
+    }
+  },
+
+  async returnAssetLoan(loanId: string, assetId: string, condition?: string) {
+    const loanPath = `asset_loans/${loanId}`;
+    const assetPath = `assets/${assetId}`;
+    try {
+      await updateDoc(doc(db, 'asset_loans', loanId), {
+        status: 'returned',
+        returnDate: new Date().toISOString().split('T')[0],
+        conditionOnReturn: condition || 'Baik'
+      });
+      await updateDoc(doc(db, 'assets', assetId), {
+        status: 'available',
+        assignedTo: '',
+        assignedToName: ''
+      });
+      return true;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, loanPath);
+    }
+  },
+
+  // ==========================================
+  // MODUL HR & TEAM MANAGEMENT
+  // ==========================================
+  async getEmployees(tenantId: string): Promise<Employee[]> {
+    const path = 'employees';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Employee));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async createEmployee(tenantId: string, data: Omit<Employee, 'id' | 'tenantId'>): Promise<string> {
+    const path = 'employees';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...data,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
+    }
+  },
+
+  async updateEmployee(employeeId: string, data: Partial<Employee>) {
+    const path = `employees/${employeeId}`;
+    try {
+      await updateDoc(doc(db, 'employees', employeeId), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async deleteEmployee(employeeId: string) {
+    const path = `employees/${employeeId}`;
+    try {
+      await deleteDoc(doc(db, 'employees', employeeId));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, path);
+    }
+  },
+
+  async getAttendances(tenantId: string): Promise<AttendanceRecord[]> {
+    const path = 'attendances';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as AttendanceRecord));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async recordAttendance(tenantId: string, record: Omit<AttendanceRecord, 'id' | 'tenantId'>) {
+    const path = 'attendances';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...record,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
+    }
+  },
+
+  async getWorkOrders(tenantId: string): Promise<WorkOrder[]> {
+    const path = 'work_orders';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as WorkOrder));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async createWorkOrder(tenantId: string, data: Omit<WorkOrder, 'id' | 'tenantId'>) {
+    const path = 'work_orders';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...data,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
+    }
+  },
+
+  async updateWorkOrderStatus(workOrderId: string, status: WorkOrder['status'], redamanDb?: string, notes?: string) {
+    const path = `work_orders/${workOrderId}`;
+    try {
+      const updateData: any = {
+        status,
+        updatedAt: serverTimestamp()
+      };
+      if (status === 'completed') {
+        updateData.completedAt = new Date().toISOString();
+      }
+      if (redamanDb) updateData.redamanDb = redamanDb;
+      if (notes) updateData.notes = notes;
+
+      await updateDoc(doc(db, 'work_orders', workOrderId), updateData);
+      return true;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async getPayrollSlips(tenantId: string): Promise<PayrollSlip[]> {
+    const path = 'payroll_slips';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as PayrollSlip));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async createPayrollSlip(tenantId: string, data: Omit<PayrollSlip, 'id' | 'tenantId'>) {
+    const path = 'payroll_slips';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...data,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
+    }
+  },
+
+  async markPayrollSlipPaid(tenantId: string, slip: PayrollSlip, paymentMethod: string) {
+    const slipPath = `payroll_slips/${slip.id}`;
+    const transactionPath = 'transactions';
+    const now = new Date().toISOString();
+    const today = now.split('T')[0];
+
+    try {
+      if (slip.id) {
+        await updateDoc(doc(db, 'payroll_slips', slip.id), {
+          paymentStatus: 'paid',
+          paymentDate: today,
+          paymentMethod
+        });
+      }
+
+      // Automatically log expense in cash flow
+      await addDoc(collection(db, transactionPath), {
+        tenantId,
+        type: 'expense',
+        category: 'gaji_teknisi',
+        amount: Number(slip.totalTakeHomePay),
+        date: today,
+        paymentMethod: paymentMethod,
+        description: `Gaji & Insentif ${slip.period} - ${slip.employeeName} (${slip.role})`,
+        referenceNo: slip.slipNumber,
+        recordedBy: auth.currentUser?.email || 'HR & Finance Admin',
+        createdAt: serverTimestamp()
+      });
+
+      return true;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, slipPath);
     }
   }
 };

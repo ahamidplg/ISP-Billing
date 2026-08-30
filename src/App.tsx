@@ -32,7 +32,10 @@ import {
   ZapOff,
   Gauge,
   Radio,
-  Share2
+  Share2,
+  Wallet,
+  Boxes,
+  Briefcase
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -51,6 +54,9 @@ import { twMerge } from 'tailwind-merge';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, User } from 'firebase/auth';
 import NetworkMap from './components/NetworkMap';
+import { FinanceModule } from './components/FinanceModule';
+import { AssetModule } from './components/AssetModule';
+import { HRModule } from './components/HRModule';
 import { ispService, Router, isValidMacAddress } from './services/ispService';
 
 // --- Utilities ---
@@ -138,7 +144,7 @@ function TenantInitializer({ children }: { children: React.ReactNode }) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-slate-50 space-y-4">
         <Activity className="w-8 h-8 text-indigo-600 animate-spin" />
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Synchronizing Edge Node Permissions...</p>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menyinkronkan Izin Node Edge...</p>
       </div>
     );
   }
@@ -161,11 +167,11 @@ function LoginView() {
             <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-slate-200 shadow-lg">
               IB
             </div>
-            <span className="text-slate-900 font-bold text-2xl tracking-tight">ISP Billing</span>
+            <span className="text-slate-900 font-bold text-2xl tracking-tight">Penagihan ISP</span>
           </div>
           <div className="space-y-4">
-            <h1 className="text-5xl font-bold text-slate-900 tracking-tighter leading-tight">Your ISP,<br /><span className="text-indigo-600">Reimagined.</span></h1>
-            <p className="text-slate-500 text-lg leading-relaxed">Multi-tenant FTTH management with real-time network visibility and automated revenue tracking.</p>
+            <h1 className="text-5xl font-bold text-slate-900 tracking-tighter leading-tight">ISP Anda,<br /><span className="text-indigo-600">Didesain Ulang.</span></h1>
+            <p className="text-slate-500 text-lg leading-relaxed">Manajemen FTTH multi-tenant dengan visibilitas jaringan real-time dan pelacakan pendapatan otomatis.</p>
           </div>
           <div className="space-y-4">
             <button 
@@ -173,9 +179,9 @@ function LoginView() {
               className="w-full flex items-center justify-center gap-3 bg-slate-900 text-white py-4 rounded-xl font-semibold hover:bg-slate-800 transition-all shadow-md active:scale-[0.98]"
             >
               <img src="https://www.google.com/favicon.ico" className="w-5 h-5 brightness-[100]" alt="Google" />
-              Sign in with Google
+              Sign in dengan Google
             </button>
-            <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest font-bold">Authorized Access Only</p>
+            <p className="text-center text-[10px] text-slate-400 uppercase tracking-widest font-bold">Hanya Akses Berwenang</p>
           </div>
         </div>
       </div>
@@ -216,23 +222,28 @@ function AppShell() {
       <aside className={cn("bg-slate-900 flex flex-col transition-all duration-300 border-r border-slate-800 shrink-0", isSidebarOpen ? "w-56" : "w-20")}>
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-slate-100 text-slate-900 rounded flex items-center justify-center font-bold">IB</div>
-          {isSidebarOpen && <span className="text-white font-bold tracking-tight">ISP Billing</span>}
+          {isSidebarOpen && <span className="text-white font-bold tracking-tight">Penagihan ISP</span>}
         </div>
         <nav className="flex-1 px-3 space-y-1 mt-4">
-          <div className="text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Network Ops</div>
-          <SidebarItem icon={LayoutDashboard} label="Dashboard" isActive={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} isOpen={isSidebarOpen} />
-          <SidebarItem icon={Users} label="Subscribers" isActive={activeTab === 'customers'} onClick={() => setActiveTab('customers')} isOpen={isSidebarOpen} />
-          <SidebarItem icon={RouterIcon} label="OLT Management" isActive={activeTab === 'network'} onClick={() => setActiveTab('network')} isOpen={isSidebarOpen} />
-          <SidebarItem icon={MapIcon} label="Fiber Mapping" isActive={activeTab === 'map'} onClick={() => setActiveTab('map')} isOpen={isSidebarOpen} />
+          <div className="text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Operasi Jaringan</div>
+          <SidebarItem icon={LayoutDashboard} label="Dasbor" isActive={activeTab === 'dashboard'} onClick={() => setActiveTab('dashboard')} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Users} label="Pelanggan" isActive={activeTab === 'customers'} onClick={() => setActiveTab('customers')} isOpen={isSidebarOpen} />
+          <SidebarItem icon={RouterIcon} label="Manajemen OLT" isActive={activeTab === 'network'} onClick={() => setActiveTab('network')} isOpen={isSidebarOpen} />
+          <SidebarItem icon={MapIcon} label="Pemetaan Fiber" isActive={activeTab === 'map'} onClick={() => setActiveTab('map')} isOpen={isSidebarOpen} />
           
-          <div className="pt-4 text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Financials</div>
-          <SidebarItem icon={CreditCard} label="Billing Cycles" isActive={activeTab === 'billing'} onClick={() => setActiveTab('billing')} isOpen={isSidebarOpen} />
+          <div className="pt-4 text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Keuangan & Billing</div>
+          <SidebarItem icon={Wallet} label="Modul Keuangan" isActive={activeTab === 'finance'} onClick={() => setActiveTab('finance')} isOpen={isSidebarOpen} />
+          <SidebarItem icon={CreditCard} label="Siklus Penagihan" isActive={activeTab === 'billing'} onClick={() => setActiveTab('billing')} isOpen={isSidebarOpen} />
+
+          <div className="pt-4 text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Aset & Tim</div>
+          <SidebarItem icon={Boxes} label="Pencatatan Aset" isActive={activeTab === 'assets'} onClick={() => setActiveTab('assets')} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Briefcase} label="Modul HR & Tim" isActive={activeTab === 'hr'} onClick={() => setActiveTab('hr')} isOpen={isSidebarOpen} />
         </nav>
         
         {isSidebarOpen && (
           <div className="p-4 border-t border-slate-800 bg-slate-900/50">
             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex justify-between">
-              <span>System Load</span>
+              <span>Beban Sistem</span>
               <span>24%</span>
             </div>
             <div className="w-full bg-slate-700 h-1 rounded-full mt-2 overflow-hidden">
@@ -242,8 +253,8 @@ function AppShell() {
         )}
 
         <div className="p-4 border-t border-slate-800">
-          <SidebarItem icon={Settings} label="System Config" isActive={activeTab === 'settings'} onClick={() => setActiveTab('settings')} isOpen={isSidebarOpen} />
-          <SidebarItem icon={LogOut} label="Sign Out" onClick={handleLogout} isOpen={isSidebarOpen} danger />
+          <SidebarItem icon={Settings} label="Konfigurasi" isActive={activeTab === 'settings'} onClick={() => setActiveTab('settings')} isOpen={isSidebarOpen} />
+          <SidebarItem icon={LogOut} label="Keluar" onClick={handleLogout} isOpen={isSidebarOpen} danger />
         </div>
       </aside>
 
@@ -283,7 +294,10 @@ function AppShell() {
             {activeTab === 'customers' && <SubscribersView key="customers" />}
             {activeTab === 'network' && <InfrastructureView key="network" />}
             {activeTab === 'map' && <MapView key="map" />}
-            {activeTab === 'billing' && <BillingView key="billing" />}
+            {activeTab === 'finance' && <FinanceModule key="finance" tenantId="fiber_ops_prod" initialTab="ringkasan" />}
+            {activeTab === 'billing' && <FinanceModule key="billing" tenantId="fiber_ops_prod" initialTab="tagihan" />}
+            {activeTab === 'assets' && <AssetModule key="assets" tenantId="fiber_ops_prod" />}
+            {activeTab === 'hr' && <HRModule key="hr" tenantId="fiber_ops_prod" />}
             {activeTab === 'settings' && <SettingsView key="settings" />}
           </AnimatePresence>
         </div>
@@ -298,19 +312,19 @@ function DashboardView() {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Total Active FTTH" value="14,282" change="+3.4%" trend="up" icon={Users} />
-        <StatCard label="Current Bandwidth" value="8.42 Gbps" change="92.4% Usage" trend="warn" icon={Activity} />
-        <StatCard label="Revenue (MTD)" value="$124,502.50" change="+$2,104 Pending" trend="up" icon={CreditCard} />
-        <StatCard label="Active OLT Nodes" value="48/48" change="Normal" trend="up" icon={HardDrive} />
+        <StatCard label="Total FTTH Aktif" value="14,282" change="+3.4%" trend="up" icon={Users} />
+        <StatCard label="Bandwidth Saat Ini" value="8.42 Gbps" change="92.4% Penggunaan" trend="warn" icon={Activity} />
+        <StatCard label="Pendapatan (Bulan Ini)" value="Rp 124.500.000" change="+Rp 2.100.000 Tertunda" trend="up" icon={CreditCard} />
+        <StatCard label="Node OLT Aktif" value="48/48" change="Normal" trend="up" icon={HardDrive} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
            <div className="flex justify-between items-center mb-10">
-              <h3 className="font-bold text-slate-800">Fiber Throughput (Aggregate)</h3>
+              <h3 className="font-bold text-slate-800">Throughput Fiber (Gabungan)</h3>
               <div className="flex gap-4">
-                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> Download</div>
-                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-slate-200"></div> Upload</div>
+                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-indigo-500"></div> Unduh</div>
+                 <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-slate-200"></div> Unggah</div>
               </div>
            </div>
            <div className="h-72">
@@ -454,14 +468,14 @@ function SubscribersView() {
     <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6">
        <div className="flex justify-between items-center text-slate-800">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Subscribers</h1>
-            <p className="text-xs text-slate-500 font-medium tracking-tight">Manage FTTH subscriber profiles and hardware identifiers.</p>
+            <h1 className="text-2xl font-bold tracking-tight">Pelanggan</h1>
+            <p className="text-xs text-slate-500 font-medium tracking-tight">Kelola profil pelanggan FTTH dan identitas perangkat keras.</p>
           </div>
           <button 
             onClick={() => setShowModal(true)}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-lg shadow-indigo-100 flex items-center gap-2 hover:bg-indigo-700 transition-all cursor-pointer"
           >
-             <Users className="w-3.5 h-3.5" /> Register New Account
+             <Users className="w-3.5 h-3.5" /> Daftar Akun Baru
           </button>
        </div>
 
@@ -474,9 +488,9 @@ function SubscribersView() {
                 exit={{ opacity: 0, y: 20 }}
                 className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-slate-800"
               >
-                <div className="flex flex-col">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Bulk Actions</p>
-                  <p className="text-xs font-bold text-white">{selectedIds.length} Nodes Selected</p>
+                 <div className="flex flex-col">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tindakan Massal</p>
+                  <p className="text-xs font-bold text-white">{selectedIds.length} Node Terpilih</p>
                 </div>
                 <div className="flex gap-2">
                   <button 
@@ -485,7 +499,7 @@ function SubscribersView() {
                     className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2"
                   >
                     {bulkProcessing ? <Activity className="w-3 h-3 animate-spin" /> : <Power className="w-3 h-3" />}
-                    Activate Selected
+                    Aktifkan Terpilih
                   </button>
                   <button 
                     disabled={bulkProcessing}
@@ -493,7 +507,7 @@ function SubscribersView() {
                     className="px-4 py-2 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2"
                   >
                     {bulkProcessing ? <Activity className="w-3 h-3 animate-spin" /> : <Power className="w-3 h-3" />}
-                    Suspend Selected
+                    Tangguhkan Terpilih
                   </button>
                 </div>
               </motion.div>
@@ -528,7 +542,7 @@ function SubscribersView() {
                 ) : customers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-24 text-center">
-                      <p className="text-slate-400 text-xs font-bold uppercase">No subscribers found in current tenant</p>
+                      <p className="text-slate-400 text-xs font-bold uppercase">Tidak ada pelanggan ditemukan di tenant saat ini</p>
                     </td>
                   </tr>
                 ) : customers.map((c: any) => (
@@ -886,25 +900,25 @@ function InfrastructureView() {
     <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6">
        <div className="flex justify-between items-center text-slate-800">
           <div className="flex items-center gap-6">
-            <h1 className="text-2xl font-bold tracking-tight">Infrastructure</h1>
+            <h1 className="text-2xl font-bold tracking-tight">Infrastruktur</h1>
             <div className="flex bg-slate-200/50 p-1 rounded-lg border border-slate-200">
                <button 
                 onClick={() => setViewMode('olts')}
                 className={cn("px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all", viewMode === 'olts' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                >
-                 FTTH OLTs
+                 OLT FTTH
                </button>
                <button 
                 onClick={() => setViewMode('routers')}
                 className={cn("px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all", viewMode === 'routers' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                >
-                 Core Routers
+                 Router Utama
                </button>
                <button 
                 onClick={() => setViewMode('odps')}
                 className={cn("px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all", viewMode === 'odps' ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700")}
                >
-                 PDNs/ODPs
+                 PDN/ODP
                </button>
             </div>
           </div>
@@ -918,7 +932,7 @@ function InfrastructureView() {
             }}
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-lg shadow-indigo-100 flex items-center gap-2 hover:bg-indigo-700 transition-all cursor-pointer"
           >
-             <Plus className="w-3.5 h-3.5" /> {viewMode === 'odps' ? 'Register ODP' : 'Register HW'}
+             <Plus className="w-3.5 h-3.5" /> {viewMode === 'odps' ? 'Daftar ODP' : 'Daftar HW'}
           </button>
        </div>
        
@@ -926,16 +940,16 @@ function InfrastructureView() {
           <div className="lg:col-span-2 space-y-6">
              <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{viewMode === 'olts' ? 'Optical Line Terminals' : viewMode === 'routers' ? 'Network Routers' : 'Optical Distribution Points'}</h3>
-                   <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{viewMode === 'olts' ? olts.length : viewMode === 'routers' ? routers.length : odps.length} Active Nodes</span>
+                   <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{viewMode === 'olts' ? 'Terminal Jalur Optik' : viewMode === 'routers' ? 'Router Jaringan' : 'Titik Distribusi Optik'}</h3>
+                   <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{viewMode === 'olts' ? olts.length : viewMode === 'routers' ? routers.length : odps.length} Node Aktif</span>
                 </div>
                 <table className="w-full text-left border-collapse">
                    <thead>
                       <tr className="bg-slate-50/20 text-[9px] uppercase font-bold tracking-widest text-slate-500 border-b border-slate-100">
-                         <th className="px-6 py-4">{viewMode === 'odps' ? 'ODP Identity' : 'Node Identity'}</th>
-                         <th className="px-6 py-4">IP Endpoint</th>
+                         <th className="px-6 py-4">{viewMode === 'odps' ? 'Identitas ODP' : 'Identitas Node'}</th>
+                         <th className="px-6 py-4">Endpoint IP / Lokasi</th>
                          <th className="px-6 py-4">Status</th>
-                         <th className="px-6 py-4 text-right">Commands</th>
+                         <th className="px-6 py-4 text-right">Perintah</th>
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-50">
@@ -948,8 +962,8 @@ function InfrastructureView() {
                       ) : (viewMode === 'olts' ? olts : viewMode === 'routers' ? routers : odps).length === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-6 py-24 text-center">
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">No hardware provisioned in this sector</p>
-                            <p className="text-[10px] text-slate-300 mt-2">Registers nodes to begin monitoring assets</p>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Tidak ada perangkat keras yang diprovisi di sektor ini</p>
+                            <p className="text-[10px] text-slate-300 mt-2">Daftarkan node untuk mulai memantau aset</p>
                           </td>
                         </tr>
                       ) : (viewMode === 'olts' ? olts : viewMode === 'routers' ? routers : odps).map((node: any) => (
@@ -982,7 +996,7 @@ function InfrastructureView() {
                                  <div>
                                     <p className="text-sm font-bold text-slate-900 tracking-tight leading-none mb-1">{node.name}</p>
                                     <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
-                                      {viewMode === 'odps' ? `${node.ports || 8} Port Splitter` : `${node.brand || 'Generic'} Infrastructure`}
+                                      {viewMode === 'odps' ? `Splitter Port ${node.ports || 8}` : `Infrastruktur ${node.brand || 'Generik'}`}
                                     </p>
                                  </div>
                               </div>
@@ -1075,7 +1089,7 @@ function InfrastructureView() {
                                className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                              />
                            )}
-                           <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Unconfigured ONUs</h4>
+                           <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ONU Belum Dikonfigurasi</h4>
                         </div>
                         {isOltLoading && <Activity className="w-3 h-3 text-indigo-500 animate-spin" />}
                       </div>
@@ -1087,7 +1101,7 @@ function InfrastructureView() {
                           className="bg-indigo-600 rounded-xl p-3 flex flex-col gap-3 shadow-lg shadow-indigo-100"
                         >
                           <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">{selectedUnconfiguredOnus.length} Items Selected</span>
+                            <span className="text-[10px] font-bold text-white uppercase tracking-wider">{selectedUnconfiguredOnus.length} Item Terpilih</span>
                             <button onClick={() => setSelectedUnconfiguredOnus([])} className="text-indigo-200 hover:text-white"><X className="w-3 h-3" /></button>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
@@ -1096,23 +1110,23 @@ function InfrastructureView() {
                                disabled={isBulkAuthorizing}
                                className="flex-1 py-1.5 bg-white text-indigo-600 rounded-lg text-[9px] font-bold uppercase tracking-wider hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
                              >
-                               {isBulkAuthorizing ? 'Processing...' : 'Authorize Selected'}
+                               {isBulkAuthorizing ? 'Memproses...' : 'Otorisasi Terpilih'}
                              </button>
                              <button 
-                               onClick={() => alert('Plan Group Assignment logic pending backend integration')}
+                               onClick={() => alert('Logika penugasan Plan Group menunggu integrasi backend')}
                                className="flex-1 py-1.5 bg-indigo-500 text-white border border-indigo-400 rounded-lg text-[9px] font-bold uppercase tracking-wider hover:bg-indigo-400 transition-colors"
                              >
-                               Assign Plan Group
+                               Tugaskan Plan Group
                              </button>
                           </div>
                         </motion.div>
                       )}
-                      
+
                       <div className="space-y-2">
                         {unconfiguredOnus.length === 0 ? (
                           <div className="py-12 border-2 border-dashed border-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-300">
                             <HardDrive className="w-8 h-8 mb-2 opacity-20" />
-                            <p className="text-[9px] font-bold uppercase tracking-widest">No hardware detected</p>
+                            <p className="text-[9px] font-bold uppercase tracking-widest">Tidak ada perangkat keras terdeteksi</p>
                           </div>
                         ) : unconfiguredOnus.map((onu, idx) => (
                           <div 
@@ -1137,7 +1151,7 @@ function InfrastructureView() {
                                  />
                                  <div>
                                    <p className="text-[10px] font-mono font-bold text-indigo-600 select-all uppercase">{onu.sn}</p>
-                                   <p className="text-[9px] text-slate-400 font-bold uppercase">PON: {onu.pon} | Brand: {onu.vendor}</p>
+                                   <p className="text-[9px] text-slate-400 font-bold uppercase">PON: {onu.pon} | Merek: {onu.vendor}</p>
                                  </div>
                               </div>
                               <button 
@@ -1147,7 +1161,7 @@ function InfrastructureView() {
                                 }}
                                 className="px-3 py-1.5 bg-indigo-600 text-white rounded text-[9px] font-bold uppercase tracking-wider hover:bg-slate-900 transition-colors shadow-lg shadow-indigo-100"
                               >
-                                Authorize
+                                Otorisasi
                               </button>
                             </div>
                             <div className="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
@@ -1164,22 +1178,22 @@ function InfrastructureView() {
                       onClick={() => selectedOlt && fetchOltDetails(selectedOlt)}
                       className="w-full py-3 bg-white border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center gap-2 shadow-sm font-bold disabled:opacity-50"
                     >
-                      <RefreshCw className={cn("w-3.5 h-3.5", isOltLoading && "animate-spin")} /> Re-scan PON Interfaces
+                      <RefreshCw className={cn("w-3.5 h-3.5", isOltLoading && "animate-spin")} /> Pindai Ulang Antarmuka PON
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col items-center justify-center p-12 text-center text-slate-300">
                   <Activity className="w-12 h-12 mb-4 opacity-20" />
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Hardware Diagnostics</h3>
-                  <p className="text-[10px] mt-2 leading-relaxed">Select a provisioned OLT node to initiate hardware discovery protocols.</p>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Diagnostik Perangkat Keras</h3>
+                  <p className="text-[10px] mt-2 leading-relaxed">Pilih node OLT yang telah diprovisi untuk memulai protokol penemuan perangkat keras.</p>
                 </div>
               )
             ) : (
               selectedRouter ? (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
                   <div className="p-6 border-b border-slate-100 bg-slate-900 text-white text-center">
-                    <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-2">Diagnostic Shell</p>
+                    <p className="text-[9px] font-bold text-indigo-400 uppercase tracking-widest leading-none mb-2">Shell Diagnostik</p>
                     <h3 className="text-lg font-bold tracking-tight">{selectedRouter.name}</h3>
                     <p className="text-[10px] text-slate-500 font-mono mt-1">{selectedRouter.ip}</p>
                   </div>
@@ -1191,7 +1205,7 @@ function InfrastructureView() {
                           <div className="w-12 h-12 border-2 border-slate-100 border-t-indigo-600 rounded-full animate-spin"></div>
                           <Activity className="w-4 h-4 text-indigo-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pulse" />
                         </div>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 animate-pulse">Requesting API Handshake...</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 animate-pulse">Menunggu Handshake API...</p>
                       </div>
                     ) : diagError ? (
                       <div className="flex-1 flex flex-col items-center justify-center text-center space-y-3 p-4">
@@ -1233,16 +1247,16 @@ function InfrastructureView() {
                                 style={{ width: `${healthData?.memory?.percent || 0}%` }}
                              ></div>
                           </div>
-                          <p className="text-[9px] font-mono text-slate-400">{healthData?.memory?.used || '0B'} / {healthData?.memory?.total || '0B'} Allocated</p>
+                          <p className="text-[9px] font-mono text-slate-400">{healthData?.memory?.used || '0B'} / {healthData?.memory?.total || '0B'} Dialokasikan</p>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 pt-4">
                           <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Uptime</p>
+                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Waktu Aktif</p>
                              <p className="text-xs font-bold text-slate-700 font-mono tracking-tighter">{healthData?.uptime || '0s'}</p>
                           </div>
                           <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Core Temp</p>
+                             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Suhu Inti</p>
                              <p className="text-xs font-bold text-slate-700 font-mono tracking-tighter">{healthData?.temp || 0}°C</p>
                           </div>
                         </div>
@@ -1262,15 +1276,15 @@ function InfrastructureView() {
                       onClick={() => fetchLiveHealth(selectedRouter.id)}
                       className="w-full py-3 bg-white border border-slate-200 rounded-lg text-[10px] font-bold uppercase tracking-widest text-slate-600 hover:bg-slate-100 transition-colors flex items-center justify-center gap-2 shadow-sm font-bold disabled:opacity-50"
                     >
-                      <RefreshCw className={cn("w-3.5 h-3.5", isDiagFetching && "animate-spin")} /> Run System Health Check
+                      <RefreshCw className={cn("w-3.5 h-3.5", isDiagFetching && "animate-spin")} /> Jalankan Cek Kesehatan Sistem
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col items-center justify-center p-12 text-center text-slate-300">
                   <Activity className="w-12 h-12 mb-4 opacity-20" />
-                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Router Diagnostics</h3>
-                  <p className="text-[10px] mt-2 leading-relaxed">Select a core router to initiate live health telemetry link.</p>
+                  <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Diagnostik Router</h3>
+                  <p className="text-[10px] mt-2 leading-relaxed">Pilih router utama untuk memulai tautan telemetri kesehatan langsung.</p>
                 </div>
               )
             )}
@@ -1303,7 +1317,7 @@ function InfrastructureView() {
                      </div>
                   )}
                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Hardware Name</label>
+                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nama Perangkat Keras</label>
                      <input 
                         required
                         type="text" 
@@ -1315,7 +1329,7 @@ function InfrastructureView() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Vendor Brand</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Merek Vendor</label>
                         <select 
                            value={provisionFormData.brand}
                            onChange={e => setProvisionFormData({...provisionFormData, brand: e.target.value as any})}
@@ -1327,7 +1341,7 @@ function InfrastructureView() {
                         </select>
                      </div>
                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Protocol</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Protokol</label>
                         <select 
                            value={provisionFormData.protocol}
                            onChange={e => setProvisionFormData({...provisionFormData, protocol: e.target.value as any})}
@@ -1339,7 +1353,7 @@ function InfrastructureView() {
                      </div>
                   </div>
                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">IP Endpoint</label>
+                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Endpoint IP</label>
                      <input 
                         required
                         type="text" 
@@ -1351,7 +1365,7 @@ function InfrastructureView() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">API Username</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nama Pengguna API</label>
                         <input 
                            required
                            type="text" 
@@ -1362,7 +1376,7 @@ function InfrastructureView() {
                         />
                      </div>
                      <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Provision Status</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status Provisi</label>
                         <select 
                            value={provisionFormData.status}
                            onChange={e => setProvisionFormData({...provisionFormData, status: e.target.value as any})}
@@ -1374,7 +1388,7 @@ function InfrastructureView() {
                      </div>
                   </div>
                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">API Password</label>
+                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Kata Sandi API</label>
                      <input 
                         required
                         type="password" 
@@ -1399,7 +1413,7 @@ function InfrastructureView() {
                         disabled={isProvisioning}
                         className="py-4 bg-indigo-600 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-[0.98] disabled:opacity-50"
                      >
-                        {isProvisioning ? "Registering..." : "Provision Node"}
+                        {isProvisioning ? "Mendaftarkan..." : "Provisi Node"}
                      </button>
                   </div>
                </form>
@@ -1415,7 +1429,7 @@ function InfrastructureView() {
                       <div className="p-1 bg-amber-100 text-amber-600 rounded">
                          <Share2 className="w-4 h-4" />
                       </div>
-                      Register Distribution Point (ODP)
+                      Daftar Titik Distribusi (ODP)
                    </h3>
                    <button onClick={() => setShowOdpModal(false)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5 transition-all hover:scale-110" /></button>
                 </div>
@@ -1427,19 +1441,19 @@ function InfrastructureView() {
                      </div>
                    )}
                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ODP Name</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nama ODP</label>
                       <input 
                          required
                          type="text" 
                          value={odpFormData.name}
                          onChange={e => setOdpFormData({...odpFormData, name: e.target.value})}
                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold"
-                         placeholder="e.g. ODP-BKT-01" 
+                         placeholder="misal: ODP-BKT-01" 
                       />
                    </div>
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Capacity (Ports)</label>
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Kapasitas (Port)</label>
                          <input 
                             required
                             type="number" 
@@ -1449,21 +1463,21 @@ function InfrastructureView() {
                          />
                       </div>
                       <div className="space-y-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Parent OLT ID</label>
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ID OLT Induk</label>
                          <select 
                             required
                             value={odpFormData.oltId}
                             onChange={e => setOdpFormData({...odpFormData, oltId: e.target.value})}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold"
                          >
-                            <option value="">Select OLT</option>
+                            <option value="">Pilih OLT</option>
                             {olts.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                          </select>
                       </div>
                    </div>
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Latitude</label>
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Lintang</label>
                          <input 
                             required
                             type="number"
@@ -1474,7 +1488,7 @@ function InfrastructureView() {
                          />
                       </div>
                       <div className="space-y-1.5">
-                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Longitude</label>
+                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Bujur</label>
                          <input 
                             required
                             type="number"
@@ -1487,7 +1501,7 @@ function InfrastructureView() {
                    </div>
                    <div className="space-y-1.5 pt-2">
                       <button disabled={isOdpSubmitting} type="submit" className="w-full py-4 bg-amber-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg shadow-amber-100 hover:bg-amber-600 transition-all active:scale-[0.98] disabled:opacity-50">
-                         {isOdpSubmitting ? 'Registering...' : 'Provision ODP'}
+                         {isOdpSubmitting ? 'Mendaftarkan...' : 'Provisi ODP'}
                       </button>
                    </div>
                 </form>
@@ -1508,8 +1522,8 @@ function InfrastructureView() {
                       <HardDrive className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900 text-sm tracking-tight leading-none mb-1">ONU Diagnostics</h3>
-                      <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{selectedOnuDetails?.sn || 'Loading...'}</p>
+                      <h3 className="font-bold text-slate-900 text-sm tracking-tight leading-none mb-1">Diagnostik ONU</h3>
+                      <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">{selectedOnuDetails?.sn || 'Memuat...'}</p>
                     </div>
                   </div>
                   <button onClick={() => setShowOnuModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -1521,7 +1535,7 @@ function InfrastructureView() {
                   {isMetricsFetching && !onuMetrics ? (
                     <div className="py-20 flex flex-col items-center justify-center space-y-4">
                       <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] animate-pulse">Running Optical Diagnostics...</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] animate-pulse">Menjalankan Diagnostik Optik...</p>
                     </div>
                   ) : (
                     <>
@@ -1529,7 +1543,7 @@ function InfrastructureView() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">RX Power</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Daya RX</span>
                             <Radio className="w-3.5 h-3.5 text-indigo-500" />
                           </div>
                           <div>
@@ -1548,7 +1562,7 @@ function InfrastructureView() {
 
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">TX Power</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Daya TX</span>
                             <Zap className="w-3.5 h-3.5 text-amber-500" />
                           </div>
                           <div>
@@ -1561,7 +1575,7 @@ function InfrastructureView() {
 
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                           <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Temperature</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Suhu</span>
                             <p className="text-lg font-bold text-slate-900 tracking-tight">{onuMetrics?.temperature || '45.2'}°C</p>
                           </div>
                           <div className="p-2 bg-rose-50 text-rose-500 rounded-lg">
@@ -1571,7 +1585,7 @@ function InfrastructureView() {
 
                         <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
                           <div className="space-y-1">
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Voltage</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Tegangan</span>
                             <p className="text-lg font-bold text-slate-900 tracking-tight">{onuMetrics?.voltage || '3.31'}V</p>
                           </div>
                           <div className="p-2 bg-emerald-50 text-emerald-500 rounded-lg">
@@ -1584,7 +1598,7 @@ function InfrastructureView() {
                       <div className="pt-2">
                         <div className="flex items-center gap-2 mb-3">
                           <div className="h-[1px] flex-1 bg-slate-100"></div>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Subscriber Information</span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Informasi Pelanggan</span>
                           <div className="h-[1px] flex-1 bg-slate-100"></div>
                         </div>
                         
@@ -1594,8 +1608,8 @@ function InfrastructureView() {
                               {selectedOnuDetails?.customer?.name?.charAt(0) || 'A'}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-slate-900">{selectedOnuDetails?.customer?.name || 'Loading Customer...'}</p>
-                              <p className="text-[10px] text-slate-500 font-medium">{selectedOnuDetails?.customer?.plan || 'Active Subscription'}</p>
+                              <p className="text-sm font-bold text-slate-900">{selectedOnuDetails?.customer?.name || 'Memuat Pelanggan...'}</p>
+                              <p className="text-[10px] text-slate-500 font-medium">{selectedOnuDetails?.customer?.plan || 'Langganan Aktif'}</p>
                             </div>
                           </div>
                           <div className="text-right">
@@ -1608,15 +1622,15 @@ function InfrastructureView() {
                           <button 
                             type="button"
                             className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
-                            onClick={() => alert(`Opening CRM for ${selectedOnuDetails?.customer?.id}`)}
+                            onClick={() => alert(`Membuka CRM untuk ${selectedOnuDetails?.customer?.id}`)}
                           >
                             <Users className="w-3.5 h-3.5" />
-                            View Profile
+                            Lihat Profil
                           </button>
                           <button 
                             type="button"
                             className="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-all"
-                            title="Refresh Diagnostics"
+                            title="Segarkan Diagnostik"
                             onClick={() => selectedOlt && fetchOnuDetails(selectedOlt.id, selectedOnuDetails.sn)}
                           >
                             <RefreshCw className={cn("w-4 h-4", isMetricsFetching ? "animate-spin" : "")} />
@@ -1654,8 +1668,8 @@ function MapView() {
   return (
     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-6">
        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Geospatial Awareness</h1>
-          <p className="text-xs text-slate-500 font-medium">Subscriber density and fiber backbone topology visualization.</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Kesadaran Geospatial</h1>
+          <p className="text-xs text-slate-500 font-medium">Visualisasi kepadatan pelanggan dan topologi tulang punggung fiber.</p>
        </div>
        <NetworkMap odpNodes={odps} />
     </motion.div>
@@ -1725,8 +1739,8 @@ function SettingsView() {
     <motion.div initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }} className="space-y-6 max-w-4xl">
        <div className="flex justify-between items-center text-slate-800">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">System Configuration</h1>
-            <p className="text-xs text-slate-500 font-medium tracking-tight">Manage user profiles, organizational credentials, and ISP-wide settings.</p>
+            <h1 className="text-2xl font-bold tracking-tight">Konfigurasi Sistem</h1>
+            <p className="text-xs text-slate-500 font-medium tracking-tight">Kelola profil pengguna, kredensial organisasi, dan pengaturan seluruh ISP.</p>
           </div>
        </div>
 
@@ -1789,14 +1803,14 @@ function SettingsView() {
                       <LayoutDashboard className="w-5 h-5" />
                    </div>
                    <div>
-                      <h3 className="font-bold text-sm tracking-tight">Organization Profile</h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase">Basic ISP Metadata</p>
+                      <h3 className="font-bold text-sm tracking-tight">Profil Organisasi</h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase">Metadata Dasar ISP</p>
                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ISP Name</label>
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Nama ISP</label>
                       <input 
                         type="text" 
                         value={tenantName}
@@ -1819,8 +1833,8 @@ function SettingsView() {
                 <div className="space-y-1.5">
                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Internal Billing Currency</label>
                    <select className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold">
-                      <option>USD - United States Dollar ($)</option>
                       <option>IDR - Indonesian Rupiah (Rp)</option>
+                      <option>USD - United States Dollar ($)</option>
                       <option>EUR - Euro (€)</option>
                    </select>
                 </div>
@@ -2008,7 +2022,7 @@ function BillingView() {
        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-slate-900 p-6 rounded-xl text-white shadow-xl border border-slate-800">
              <p className="text-[9px] font-bold uppercase tracking-widest text-slate-500 mb-6">Pending Monthly Revenue</p>
-             <p className="text-3xl font-bold tracking-tight mb-2">$124,502.50</p>
+             <p className="text-3xl font-bold tracking-tight mb-2">Rp 124.500.000</p>
              <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 status-pulse"></div>
                 124 Outstanding Invoices
@@ -2044,7 +2058,7 @@ function BillingView() {
                       </div>
                       <span className="text-[13px] font-bold text-slate-700">Musi_Cyber_User_{i}</span>
                    </div>
-                   <span className="text-[13px] font-bold text-slate-900">$45.00</span>
+                   <span className="text-[13px] font-bold text-slate-900">Rp 250.000</span>
                    <div>
                       <StatusBadge status={i % 3 === 0 ? 'warning' : 'online'} />
                    </div>

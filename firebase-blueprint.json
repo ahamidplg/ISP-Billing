@@ -145,6 +145,130 @@
         "rateLimit": { "type": "string" }
       },
       "required": ["tenantId", "name"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial ledger record (income or expense).",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "description": { "type": "string" },
+        "referenceNo": { "type": "string" },
+        "recordedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tenantId", "type", "category", "amount", "date"]
+    },
+    "Asset": {
+      "title": "Asset",
+      "description": "Equipment, network infrastructure, tools, and company assets.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "assetCode": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "brandModel": { "type": "string" },
+        "serialNumber": { "type": "string" },
+        "purchaseDate": { "type": "string" },
+        "purchasePrice": { "type": "number" },
+        "currentValue": { "type": "number" },
+        "status": { "type": "string" },
+        "location": { "type": "string" },
+        "assignedTo": { "type": "string" }
+      },
+      "required": ["tenantId", "assetCode", "name", "category", "purchasePrice", "status"]
+    },
+    "AssetLoan": {
+      "title": "Asset Loan Log",
+      "description": "Log of technician borrowing and returning equipment/tools.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "assetId": { "type": "string" },
+        "assetCode": { "type": "string" },
+        "assetName": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "borrowDate": { "type": "string" },
+        "expectedReturnDate": { "type": "string" },
+        "status": { "type": "string" }
+      },
+      "required": ["tenantId", "assetId", "employeeId", "borrowDate", "status"]
+    },
+    "Employee": {
+      "title": "Employee",
+      "description": "ISP staff, technicians, NOC, and administration personnel.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "employeeCode": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "role": { "type": "string" },
+        "department": { "type": "string" },
+        "employmentType": { "type": "string" },
+        "joinDate": { "type": "string" },
+        "status": { "type": "string" },
+        "basicSalary": { "type": "number" },
+        "allowance": { "type": "number" },
+        "psbIncentivePerTask": { "type": "number" }
+      },
+      "required": ["tenantId", "employeeCode", "name", "role", "department", "status"]
+    },
+    "Attendance": {
+      "title": "Attendance",
+      "description": "Daily employee attendance and shift logs.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "date": { "type": "string" },
+        "checkIn": { "type": "string" },
+        "status": { "type": "string" },
+        "shift": { "type": "string" }
+      },
+      "required": ["tenantId", "employeeId", "date", "status"]
+    },
+    "WorkOrder": {
+      "title": "Work Order",
+      "description": "Technician task orders (PSB, repair, maintenance).",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "type": { "type": "string" },
+        "customerName": { "type": "string" },
+        "address": { "type": "string" },
+        "assignedTechnicianId": { "type": "string" },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
+        "scheduledDate": { "type": "string" }
+      },
+      "required": ["tenantId", "orderNumber", "type", "customerName", "status", "scheduledDate"]
+    },
+    "PayrollSlip": {
+      "title": "Payroll Slip",
+      "description": "Monthly salary slip for employees.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "slipNumber": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "period": { "type": "string" },
+        "basicSalary": { "type": "number" },
+        "totalTakeHomePay": { "type": "number" },
+        "paymentStatus": { "type": "string" }
+      },
+      "required": ["tenantId", "slipNumber", "employeeId", "period", "totalTakeHomePay", "paymentStatus"]
     }
   },
   "firestore": {
@@ -171,6 +295,34 @@
     "invoices": {
       "schema": "Invoice",
       "description": "Billing history."
+    },
+    "transactions": {
+      "schema": "Transaction",
+      "description": "Financial ledger transactions (income/expense)."
+    },
+    "assets": {
+      "schema": "Asset",
+      "description": "Infrastructure, equipment, tool inventory."
+    },
+    "asset_loans": {
+      "schema": "AssetLoan",
+      "description": "Technician equipment loan log."
+    },
+    "employees": {
+      "schema": "Employee",
+      "description": "Employees, technicians, NOC, and staff directory."
+    },
+    "attendances": {
+      "schema": "Attendance",
+      "description": "Daily employee attendance records."
+    },
+    "work_orders": {
+      "schema": "WorkOrder",
+      "description": "Technician job orders, PSB and repairs."
+    },
+    "payroll_slips": {
+      "schema": "PayrollSlip",
+      "description": "Generated payroll and salary slips."
     },
     "olt_nodes": {
       "schema": "OltNode",

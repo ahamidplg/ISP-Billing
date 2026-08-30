@@ -87,6 +87,16 @@ service cloud.firestore {
         && data.status in ['paid', 'unpaid', 'overdue'];
     }
 
+    // Validates a Transaction
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['tenantId', 'type', 'category', 'amount', 'date'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.type in ['income', 'expense']
+        && data.category is string && data.category.size() <= 100
+        && data.amount is number && data.amount >= 0
+        && data.date is string && data.date.size() <= 50;
+    }
+
     // Validates an ODP Node
     function isValidOdpNode(data) {
       return data.keys().hasAll(['tenantId', 'oltId', 'name'])
@@ -113,6 +123,68 @@ service cloud.firestore {
         && data.tenantId is string && isValidId(data.tenantId)
         && data.sn is string && data.sn.size() <= 100
         && data.oltId is string && isValidId(data.oltId);
+    }
+
+    // Validates an Asset
+    function isValidAsset(data) {
+      return data.keys().hasAll(['tenantId', 'assetCode', 'name', 'category', 'purchasePrice', 'status'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.assetCode is string && data.assetCode.size() <= 50
+        && data.name is string && data.name.size() <= 150
+        && data.category is string && data.category.size() <= 50
+        && data.purchasePrice is number && data.purchasePrice >= 0
+        && data.status is string && data.status.size() <= 50;
+    }
+
+    // Validates an Asset Loan
+    function isValidAssetLoan(data) {
+      return data.keys().hasAll(['tenantId', 'assetId', 'employeeId', 'borrowDate', 'status'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.assetId is string && isValidId(data.assetId)
+        && data.employeeId is string && isValidId(data.employeeId)
+        && data.status in ['borrowed', 'returned', 'overdue'];
+    }
+
+    // Validates an Employee
+    function isValidEmployee(data) {
+      return data.keys().hasAll(['tenantId', 'employeeCode', 'name', 'role', 'department', 'status'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.employeeCode is string && data.employeeCode.size() <= 50
+        && data.name is string && data.name.size() <= 100
+        && data.role is string && data.role.size() <= 50
+        && data.department is string && data.department.size() <= 50
+        && data.status in ['active', 'on_leave', 'resigned'];
+    }
+
+    // Validates Attendance
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['tenantId', 'employeeId', 'date', 'status'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.employeeId is string && isValidId(data.employeeId)
+        && data.date is string && data.date.size() <= 30
+        && data.status in ['present', 'late', 'permission', 'sick', 'leave', 'alpha'];
+    }
+
+    // Validates a Work Order
+    function isValidWorkOrder(data) {
+      return data.keys().hasAll(['tenantId', 'orderNumber', 'type', 'customerName', 'status', 'scheduledDate'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.orderNumber is string && data.orderNumber.size() <= 50
+        && data.type is string && data.type.size() <= 50
+        && data.customerName is string && data.customerName.size() <= 100
+        && data.status in ['pending', 'in_progress', 'completed', 'cancelled']
+        && data.scheduledDate is string && data.scheduledDate.size() <= 30;
+    }
+
+    // Validates a Payroll Slip
+    function isValidPayrollSlip(data) {
+      return data.keys().hasAll(['tenantId', 'slipNumber', 'employeeId', 'period', 'totalTakeHomePay', 'paymentStatus'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.slipNumber is string && data.slipNumber.size() <= 50
+        && data.employeeId is string && isValidId(data.employeeId)
+        && data.period is string && data.period.size() <= 50
+        && data.totalTakeHomePay is number && data.totalTakeHomePay >= 0
+        && data.paymentStatus in ['paid', 'pending'];
     }
 
     // --- Match Rules ---
@@ -212,11 +284,67 @@ service cloud.firestore {
       allow delete: if isTenantAdmin(existing().tenantId);
     }
 
+    // Transactions Collection (Income & Expenses Ledger)
+    match /transactions/{transactionId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidTransaction(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidTransaction(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
     // PPPoE Profiles Collection
     match /pppoe_profiles/{profileId} {
       allow read: if isTenantMember(resource.data.tenantId);
       allow create: if isTenantAdmin(incoming().tenantId) && isValidPppoeProfile(incoming());
       allow update: if isTenantAdmin(existing().tenantId) && isValidPppoeProfile(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Assets Collection
+    match /assets/{assetId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidAsset(incoming());
+      allow update: if isTenantMember(existing().tenantId) && isValidAsset(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Asset Loans Collection
+    match /asset_loans/{loanId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidAssetLoan(incoming());
+      allow update: if isTenantMember(existing().tenantId) && isValidAssetLoan(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Employees Collection
+    match /employees/{employeeId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantAdmin(incoming().tenantId) && isValidEmployee(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidEmployee(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Attendances Collection
+    match /attendances/{attendanceId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidAttendance(incoming());
+      allow update: if isTenantMember(existing().tenantId) && isValidAttendance(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Work Orders Collection
+    match /work_orders/{workOrderId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidWorkOrder(incoming());
+      allow update: if isTenantMember(existing().tenantId) && isValidWorkOrder(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // Payroll Slips Collection
+    match /payroll_slips/{slipId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantAdmin(incoming().tenantId) && isValidPayrollSlip(incoming());
+      allow update: if isTenantAdmin(existing().tenantId) && isValidPayrollSlip(incoming());
       allow delete: if isTenantAdmin(existing().tenantId);
     }
   }
