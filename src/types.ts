@@ -282,3 +282,86 @@ export interface PayrollSlip {
   paymentMethod?: string;
   createdAt?: any;
 }
+
+// ==========================================
+// TAX & REGULATORY (BHP TEL, BHP USO, PPN, PPH)
+// ==========================================
+export type TaxReportType = 'monthly' | 'quarterly' | 'semester' | 'annual';
+export type TaxPaymentStatus = 'draft' | 'calculated' | 'billing_created' | 'paid' | 'reported';
+
+export interface BhpTelUsoReport {
+  id?: string;
+  tenantId: string;
+  reportNumber: string;
+  periodType: TaxReportType;
+  periodLabel: string; // e.g. "Tahun Buku 2025" or "Semester I 2026"
+  year: number;
+  semester?: 1 | 2;
+  quarter?: 1 | 2 | 3 | 4;
+  month?: number;
+  
+  // Gross Revenue Breakdown
+  grossInternetRevenue: number;     // Pendapatan Jasa Akses Internet (ISP)
+  grossB2bRevenue: number;          // Pendapatan Jasa Sirkit Sewa / B2B Dedicated
+  grossHotspotRevenue: number;      // Pendapatan Voucher Hotspot & RT-RW Net
+  grossPsbRevenue: number;          // Pendapatan Jasa Pasang Baru & Instalasi
+  grossOtherRevenue: number;        // Pendapatan Telekomunikasi Lainnya
+  totalGrossRevenue: number;        // Total Pendapatan Kotor
+
+  // Deductible Expenses (Pengurang Pendapatan Kotor yang Diperkenankan Ditjen PPI Kominfo)
+  deductibleInterconnection: number; // Biaya Interkoneksi Resmi
+  deductibleUpstreamTransmission: number; // Biaya Sewa Jaringan Transmisi / Upstream Berizin
+  totalDeductible: number;          // Total Beban Pengurang
+
+  // Calculation Basis & Results
+  netRevenueBase: number;           // Dasar Pengenaan BHP (DPB) = Total Kotor - Pengurang
+  bhpTelRate: number;               // 0.5% (0.005)
+  bhpTelAmount: number;             // BHP Telekomunikasi
+  bhpUsoRate: number;               // 1.25% (0.0125)
+  bhpUsoAmount: number;             // BHP USO (Kewajiban Pelayanan Universal)
+  totalBhpPnbp: number;             // Total PNBP Kominfo (1.75%)
+  
+  // PPN Calculations
+  ppnOutRate: number;               // e.g. 11% or 12%
+  ppnOutAmount: number;             // PPN Keluaran
+  ppnInAmount: number;              // PPN Masukan dari vendor
+  ppnPayable: number;               // PPN Kurang/Lebih Bayar (PPN Out - PPN In)
+
+  // PPh 23 (Jasa Teknik & Sewa Tiang/Core FO)
+  pph23Amount: number;
+
+  // PPh Badan (PP 55 0.5% vs Normal 22%)
+  pphBadanScheme: 'pp55_final_0_5' | 'pasal31e_11' | 'normal_22';
+  pphBadanAmount: number;
+
+  // Status & Compliance Tracking
+  status: TaxPaymentStatus;
+  billingCodeBhpTel?: string;       // Kode Billing SIMPONI PNBP Kominfo (BHP Tel)
+  billingCodeBhpUso?: string;       // Kode Billing SIMPONI PNBP Kominfo (BHP USO)
+  billingCodePajak?: string;        // Kode Billing DJP Online (e-Billing)
+  ntpnBhpTel?: string;              // Nomor Transaksi Penerimaan Negara
+  ntpnBhpUso?: string;
+  ntpnPajak?: string;
+  paidDate?: string;
+  reportedDate?: string;
+  lhkSubmissionNumber?: string;     // Nomor Bukti Lapor e-BHP LHK Kominfo
+  notes?: string;
+  createdAt?: any;
+}
+
+export interface Pph23Record {
+  id?: string;
+  tenantId: string;
+  vendorName: string;
+  vendorNpwp: string;
+  serviceType: 'sewa_tiang' | 'sewa_core_fo' | 'jasa_splicing_teknik' | 'sewa_rack_colo' | 'jasa_konsultan';
+  invoiceNumber: string;
+  invoiceDate: string;
+  grossAmount: number;
+  taxRate: number; // 2% with NPWP, 4% non-NPWP
+  taxAmount: number;
+  netPaidToVendor: number;
+  bupotNumber?: string;
+  status: 'pending' | 'withheld' | 'paid_to_state';
+  createdAt?: any;
+}

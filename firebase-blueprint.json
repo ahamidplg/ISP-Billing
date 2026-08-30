@@ -269,6 +269,37 @@
         "paymentStatus": { "type": "string" }
       },
       "required": ["tenantId", "slipNumber", "employeeId", "period", "totalTakeHomePay", "paymentStatus"]
+    },
+    "BhpTaxReport": {
+      "title": "BHP & Tax Report",
+      "description": "Indonesian telecom BHP Tel 0.5%, BHP USO 1.25%, PPN and income tax reporting.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "reportNumber": { "type": "string" },
+        "periodLabel": { "type": "string" },
+        "totalGrossRevenue": { "type": "number" },
+        "totalDeductible": { "type": "number" },
+        "netRevenueBase": { "type": "number" },
+        "bhpTelAmount": { "type": "number" },
+        "bhpUsoAmount": { "type": "number" },
+        "totalBhpPnbp": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["tenantId", "reportNumber", "periodLabel", "totalGrossRevenue", "totalBhpPnbp", "status"]
+    },
+    "Pph23Record": {
+      "title": "PPh 23 Record",
+      "description": "Tax withholding on ISP pole rentals and contractor engineering services.",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "vendorName": { "type": "string" },
+        "grossAmount": { "type": "number" },
+        "taxAmount": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["tenantId", "vendorName", "grossAmount", "taxAmount", "status"]
     }
   },
   "firestore": {
@@ -323,6 +354,14 @@
     "payroll_slips": {
       "schema": "PayrollSlip",
       "description": "Generated payroll and salary slips."
+    },
+    "bhp_tax_reports": {
+      "schema": "BhpTaxReport",
+      "description": "BHP Telekomunikasi, BHP USO and tax calculations for Ditjen PPI Kominfo & DJP."
+    },
+    "pph23_records": {
+      "schema": "Pph23Record",
+      "description": "PPh 23 tax withholding records for pole rental and vendor services."
     },
     "olt_nodes": {
       "schema": "OltNode",

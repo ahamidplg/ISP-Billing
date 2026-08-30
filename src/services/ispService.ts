@@ -8,7 +8,9 @@ import {
   Employee, 
   AttendanceRecord, 
   WorkOrder, 
-  PayrollSlip 
+  PayrollSlip,
+  BhpTelUsoReport,
+  Pph23Record
 } from '../types';
 
 export interface Tenant {
@@ -806,6 +808,86 @@ export const ispService = {
       return true;
     } catch (e) {
       handleFirestoreError(e, OperationType.WRITE, slipPath);
+    }
+  },
+
+  // ==========================================
+  // MODUL PERHITUNGAN PAJAK & BHP (TEL & USO)
+  // ==========================================
+  async getBhpTaxReports(tenantId: string): Promise<BhpTelUsoReport[]> {
+    const path = 'bhp_tax_reports';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as BhpTelUsoReport));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async createBhpTaxReport(tenantId: string, data: Omit<BhpTelUsoReport, 'id' | 'tenantId'>): Promise<string> {
+    const path = 'bhp_tax_reports';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...data,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
+    }
+  },
+
+  async updateBhpTaxReport(reportId: string, data: Partial<BhpTelUsoReport>) {
+    const path = `bhp_tax_reports/${reportId}`;
+    try {
+      await updateDoc(doc(db, 'bhp_tax_reports', reportId), {
+        ...data,
+        updatedAt: serverTimestamp()
+      });
+      return true;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, path);
+    }
+  },
+
+  async deleteBhpTaxReport(reportId: string) {
+    const path = `bhp_tax_reports/${reportId}`;
+    try {
+      await deleteDoc(doc(db, 'bhp_tax_reports', reportId));
+      return true;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, path);
+    }
+  },
+
+  async getPph23Records(tenantId: string): Promise<Pph23Record[]> {
+    const path = 'pph23_records';
+    try {
+      const q = query(collection(db, path), where('tenantId', '==', tenantId));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Pph23Record));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, path);
+      return [];
+    }
+  },
+
+  async createPph23Record(tenantId: string, data: Omit<Pph23Record, 'id' | 'tenantId'>) {
+    const path = 'pph23_records';
+    try {
+      const docRef = await addDoc(collection(db, path), {
+        tenantId,
+        ...data,
+        createdAt: serverTimestamp()
+      });
+      return docRef.id;
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, path);
+      throw e;
     }
   }
 };

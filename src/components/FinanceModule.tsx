@@ -35,7 +35,8 @@ import {
   Layers,
   Percent,
   Coins,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Landmark
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -55,6 +56,7 @@ import {
 import { Transaction, Invoice, Customer, Plan } from '../types';
 import { ispService } from '../services/ispService';
 import { auth } from '../lib/firebase';
+import { TaxModule } from './TaxModule';
 
 interface FinanceModuleProps {
   tenantId: string;
@@ -795,6 +797,7 @@ export function FinanceModule({ tenantId, customers = [], plans = [], initialTab
           { id: 'tagihan', label: 'Tagihan & Invoice Pelanggan', icon: CreditCard },
           { id: 'laba_rugi', label: 'Laporan Laba Rugi (P&L)', icon: FileSpreadsheet },
           { id: 'kalkulator_roi', label: 'Kalkulator PSB & ROI', icon: Calculator },
+          { id: 'pajak_bhp', label: 'Perhitungan Pajak & BHP (Kominfo)', icon: Landmark },
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -1727,6 +1730,11 @@ export function FinanceModule({ tenantId, customers = [], plans = [], initialTab
             </div>
           </div>
         </div>
+      )}
+
+      {/* TAB 6: PERHITUNGAN PAJAK & BHP (KOMINFO) */}
+      {activeTab === 'pajak_bhp' && (
+        <TaxModule tenantId={tenantId} />
       )}
 
       {/* MODAL: TAMBAH TRANSAKSI (BUKU KAS) */}

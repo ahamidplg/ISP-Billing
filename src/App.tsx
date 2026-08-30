@@ -35,7 +35,8 @@ import {
   Share2,
   Wallet,
   Boxes,
-  Briefcase
+  Briefcase,
+  Landmark
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -71,6 +72,7 @@ import NetworkMap from './components/NetworkMap';
 import { FinanceModule } from './components/FinanceModule';
 import { AssetModule } from './components/AssetModule';
 import { HRModule } from './components/HRModule';
+import { TaxModule } from './components/TaxModule';
 import { ispService, Router, isValidMacAddress } from './services/ispService';
 
 // --- Utilities ---
@@ -603,6 +605,7 @@ function AppShell() {
           <div className="pt-4 text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Keuangan & Billing</div>
           <SidebarItem icon={Wallet} label="Modul Keuangan" isActive={activeTab === 'finance'} onClick={() => setActiveTab('finance')} isOpen={isSidebarOpen} />
           <SidebarItem icon={CreditCard} label="Siklus Penagihan" isActive={activeTab === 'billing'} onClick={() => setActiveTab('billing')} isOpen={isSidebarOpen} />
+          <SidebarItem icon={Landmark} label="Pajak & BHP Kominfo" isActive={activeTab === 'tax'} onClick={() => setActiveTab('tax')} isOpen={isSidebarOpen} />
 
           <div className="pt-4 text-[10px] uppercase font-bold text-slate-500 px-3 pb-2 tracking-wider">Aset & Tim</div>
           <SidebarItem icon={Boxes} label="Pencatatan Aset" isActive={activeTab === 'assets'} onClick={() => setActiveTab('assets')} isOpen={isSidebarOpen} />
@@ -671,6 +674,7 @@ function AppShell() {
             {activeTab === 'map' && <MapView key="map" />}
             {activeTab === 'finance' && <FinanceModule key="finance" tenantId="fiber_ops_prod" initialTab="ringkasan" />}
             {activeTab === 'billing' && <FinanceModule key="billing" tenantId="fiber_ops_prod" initialTab="tagihan" />}
+            {activeTab === 'tax' && <TaxModule key="tax" tenantId="fiber_ops_prod" />}
             {activeTab === 'assets' && <AssetModule key="assets" tenantId="fiber_ops_prod" />}
             {activeTab === 'hr' && <HRModule key="hr" tenantId="fiber_ops_prod" />}
             {activeTab === 'settings' && <SettingsView key="settings" />}

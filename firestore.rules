@@ -187,6 +187,26 @@ service cloud.firestore {
         && data.paymentStatus in ['paid', 'pending'];
     }
 
+    // Validates a BHP / Tax Report
+    function isValidBhpTaxReport(data) {
+      return data.keys().hasAll(['tenantId', 'reportNumber', 'periodLabel', 'totalGrossRevenue', 'totalBhpPnbp', 'status'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.reportNumber is string && data.reportNumber.size() <= 60
+        && data.totalGrossRevenue is number && data.totalGrossRevenue >= 0
+        && data.totalBhpPnbp is number && data.totalBhpPnbp >= 0
+        && data.status in ['draft', 'calculated', 'billing_created', 'paid', 'reported'];
+    }
+
+    // Validates a PPh 23 Record
+    function isValidPph23Record(data) {
+      return data.keys().hasAll(['tenantId', 'vendorName', 'grossAmount', 'taxAmount', 'status'])
+        && data.tenantId is string && isValidId(data.tenantId)
+        && data.vendorName is string && data.vendorName.size() <= 100
+        && data.grossAmount is number && data.grossAmount >= 0
+        && data.taxAmount is number && data.taxAmount >= 0
+        && data.status in ['pending', 'withheld', 'paid_to_state'];
+    }
+
     // --- Match Rules ---
 
     // Tenants Collection
@@ -345,6 +365,22 @@ service cloud.firestore {
       allow read: if isTenantMember(resource.data.tenantId);
       allow create: if isTenantAdmin(incoming().tenantId) && isValidPayrollSlip(incoming());
       allow update: if isTenantAdmin(existing().tenantId) && isValidPayrollSlip(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // BHP & Tax Reports Collection (Ditjen PPI Kominfo & Pajak)
+    match /bhp_tax_reports/{reportId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidBhpTaxReport(incoming());
+      allow update: if isTenantMember(existing().tenantId) && isValidBhpTaxReport(incoming());
+      allow delete: if isTenantAdmin(existing().tenantId);
+    }
+
+    // PPh 23 Withholding Records Collection
+    match /pph23_records/{recordId} {
+      allow read: if isTenantMember(resource.data.tenantId);
+      allow create: if isTenantMember(incoming().tenantId) && isValidPph23Record(incoming());
+      allow update: if isTenantMember(existing().tenantId) && isValidPph23Record(incoming());
       allow delete: if isTenantAdmin(existing().tenantId);
     }
   }
